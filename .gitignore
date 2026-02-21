@@ -31,7 +31,13 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-.env*
+.env
+.env.local
+.env.*.local
+
+# data directory (SQLite db and logos)
+/data/
+/prisma/data/
 
 # vercel
 .vercel
@@ -43,3 +49,5 @@ next-env.d.ts
 # local drafts and claude workspace
 _drafts/
 .claude/
+
+/src/generated/prisma

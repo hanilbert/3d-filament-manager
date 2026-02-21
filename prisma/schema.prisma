@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model GlobalFilament {
+  id          String   @id @default(uuid())
+  brand       String
+  material    String
+  color_name  String
+  color_hex   String?
+  nozzle_temp String
+  bed_temp    String
+  print_speed String
+  logo_url    String?
+  created_at  DateTime @default(now())
+
+  spools Spool[]
+}
+
+model Location {
+  id   String @id @default(uuid())
+  name String
+
+  spools Spool[]
+}
+
+model Spool {
+  id                 String   @id @default(uuid())
+  global_filament_id String
+  location_id        String?
+  status             String   @default("ACTIVE")
+  metadata           String?
+  created_at         DateTime @default(now())
+
+  globalFilament GlobalFilament @relation(fields: [global_filament_id], references: [id])
+  location       Location?      @relation(fields: [location_id], references: [id])
+}
