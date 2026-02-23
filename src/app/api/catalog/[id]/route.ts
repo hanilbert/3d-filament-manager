@@ -35,9 +35,28 @@ export async function PATCH(
   const { id } = await params;
   try {
     const body = await request.json();
+
+    const allowedFields = [
+      "brand", "material", "color_name", "color_hex", "nozzle_temp", "bed_temp", "print_speed", "logo_url",
+      "density", "diameter", "nominal_weight", "softening_temp", "chamber_temp",
+      "ironing_flow", "ironing_speed", "shrinkage", "empty_spool_weight", "pressure_advance",
+      "fan_min", "fan_max",
+      "first_layer_walls", "first_layer_infill", "first_layer_outer_wall", "first_layer_top_surface",
+      "other_layers_walls", "other_layers_infill", "other_layers_outer_wall", "other_layers_top_surface",
+      "measured_rgb", "top_voted_td", "num_td_votes",
+      "max_volumetric_speed", "flow_ratio",
+      "drying_temp", "dry_time",
+      "ams_compatibility", "build_plates",
+    ] as const;
+
+    const data: Record<string, string | null> = {};
+    for (const f of allowedFields) {
+      if (f in body) data[f] = body[f] || null;
+    }
+
     const item = await prisma.globalFilament.update({
       where: { id },
-      data: body,
+      data,
     });
     return NextResponse.json(item);
   } catch {

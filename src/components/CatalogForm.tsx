@@ -18,6 +18,43 @@ interface FormValues {
   bed_temp: string;
   print_speed: string;
   logo_url: string;
+  // Technical Details
+  density: string;
+  diameter: string;
+  nominal_weight: string;
+  softening_temp: string;
+  chamber_temp: string;
+  ironing_flow: string;
+  ironing_speed: string;
+  shrinkage: string;
+  empty_spool_weight: string;
+  pressure_advance: string;
+  // Fan Speed
+  fan_min: string;
+  fan_max: string;
+  // First Layer Speeds
+  first_layer_walls: string;
+  first_layer_infill: string;
+  first_layer_outer_wall: string;
+  first_layer_top_surface: string;
+  // Other Layers
+  other_layers_walls: string;
+  other_layers_infill: string;
+  other_layers_outer_wall: string;
+  other_layers_top_surface: string;
+  // Tested Color Data
+  measured_rgb: string;
+  top_voted_td: string;
+  num_td_votes: string;
+  // Flow Characteristics
+  max_volumetric_speed: string;
+  flow_ratio: string;
+  // Drying Info
+  drying_temp: string;
+  dry_time: string;
+  // AMS & Build Plates
+  ams_compatibility: string;
+  build_plates: string;
 }
 
 interface CatalogFormProps {
@@ -34,7 +71,67 @@ const DEFAULT: FormValues = {
   bed_temp: "",
   print_speed: "",
   logo_url: "",
+  density: "",
+  diameter: "",
+  nominal_weight: "",
+  softening_temp: "",
+  chamber_temp: "",
+  ironing_flow: "",
+  ironing_speed: "",
+  shrinkage: "",
+  empty_spool_weight: "",
+  pressure_advance: "",
+  fan_min: "",
+  fan_max: "",
+  first_layer_walls: "",
+  first_layer_infill: "",
+  first_layer_outer_wall: "",
+  first_layer_top_surface: "",
+  other_layers_walls: "",
+  other_layers_infill: "",
+  other_layers_outer_wall: "",
+  other_layers_top_surface: "",
+  measured_rgb: "",
+  top_voted_td: "",
+  num_td_votes: "",
+  max_volumetric_speed: "",
+  flow_ratio: "",
+  drying_temp: "",
+  dry_time: "",
+  ams_compatibility: "",
+  build_plates: "",
 };
+
+function CollapsibleSection({ title, open, onToggle, children }: { title: string; open: boolean; onToggle: () => void; children: React.ReactNode }) {
+  return (
+    <div className="border border-border rounded-lg overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-muted-foreground hover:bg-muted/50 transition-colors"
+      >
+        <span>{title}</span>
+        <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div className="px-4 pb-4 space-y-4 border-t border-border pt-4">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FormField({ label, field, placeholder, values, update }: { label: string; field: keyof FormValues; placeholder: string; values: FormValues; update: (f: keyof FormValues, v: string) => void }) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={field}>{label}</Label>
+      <Input id={field} value={values[field]} onChange={(e) => update(field, e.target.value)} placeholder={placeholder} className="h-12" />
+    </div>
+  );
+}
 
 export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
   const router = useRouter();
@@ -42,9 +139,24 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [showPrintParams, setShowPrintParams] = useState(
-    !!(initialValues?.nozzle_temp || initialValues?.bed_temp || initialValues?.print_speed)
-  );
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
+    const iv = initialValues || {};
+    return {
+      print: !!(iv.nozzle_temp || iv.bed_temp || iv.print_speed),
+      tech: !!(iv.density || iv.diameter || iv.nominal_weight || iv.softening_temp || iv.chamber_temp || iv.ironing_flow || iv.ironing_speed || iv.shrinkage || iv.empty_spool_weight || iv.pressure_advance),
+      fan: !!(iv.fan_min || iv.fan_max),
+      firstLayer: !!(iv.first_layer_walls || iv.first_layer_infill || iv.first_layer_outer_wall || iv.first_layer_top_surface),
+      otherLayers: !!(iv.other_layers_walls || iv.other_layers_infill || iv.other_layers_outer_wall || iv.other_layers_top_surface),
+      color: !!(iv.measured_rgb || iv.top_voted_td || iv.num_td_votes),
+      flow: !!(iv.max_volumetric_speed || iv.flow_ratio),
+      drying: !!(iv.drying_temp || iv.dry_time),
+      compat: !!(iv.ams_compatibility || iv.build_plates),
+    };
+  });
+
+  function toggleSection(key: string) {
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
 
   function update(field: keyof FormValues, value: string) {
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -78,14 +190,26 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
     setSaving(true);
 
     try {
-      const body = {
-        ...values,
-        color_hex: values.color_hex || undefined,
-        logo_url: values.logo_url || undefined,
-        nozzle_temp: values.nozzle_temp || undefined,
-        bed_temp: values.bed_temp || undefined,
-        print_speed: values.print_speed || undefined,
+      const body: Record<string, string | undefined> = {
+        brand: values.brand,
+        material: values.material,
+        color_name: values.color_name,
       };
+      const optionalKeys: (keyof FormValues)[] = [
+        "color_hex", "logo_url", "nozzle_temp", "bed_temp", "print_speed",
+        "density", "diameter", "nominal_weight", "softening_temp", "chamber_temp",
+        "ironing_flow", "ironing_speed", "shrinkage", "empty_spool_weight", "pressure_advance",
+        "fan_min", "fan_max",
+        "first_layer_walls", "first_layer_infill", "first_layer_outer_wall", "first_layer_top_surface",
+        "other_layers_walls", "other_layers_infill", "other_layers_outer_wall", "other_layers_top_surface",
+        "measured_rgb", "top_voted_td", "num_td_votes",
+        "max_volumetric_speed", "flow_ratio",
+        "drying_temp", "dry_time",
+        "ams_compatibility", "build_plates",
+      ];
+      for (const k of optionalKeys) {
+        body[k] = values[k] || undefined;
+      }
 
       if (catalogId) {
         await apiFetch(`/api/catalog/${catalogId}`, {
@@ -144,41 +268,72 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
       </div>
 
       {/* 打印参数（选填）- 可折叠 */}
-      <div className="border border-border rounded-lg overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setShowPrintParams(!showPrintParams)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-muted-foreground hover:bg-muted/50 transition-colors"
-        >
-          <span>打印参数（选填）</span>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className={`w-4 h-4 transition-transform ${showPrintParams ? "rotate-180" : ""}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-        {showPrintParams && (
-          <div className="px-4 pb-4 space-y-4 border-t border-border pt-4">
-            <div className="space-y-2">
-              <Label htmlFor="nozzle_temp">喷嘴温度</Label>
-              <Input id="nozzle_temp" value={values.nozzle_temp} onChange={(e) => update("nozzle_temp", e.target.value)} placeholder="如：190-230°C" className="h-12" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="bed_temp">热床温度</Label>
-              <Input id="bed_temp" value={values.bed_temp} onChange={(e) => update("bed_temp", e.target.value)} placeholder="如：35-45°C" className="h-12" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="print_speed">打印速度</Label>
-              <Input id="print_speed" value={values.print_speed} onChange={(e) => update("print_speed", e.target.value)} placeholder="如：≤300 mm/s" className="h-12" />
-            </div>
-          </div>
-        )}
-      </div>
+      <CollapsibleSection title="打印参数（选填）" open={openSections.print} onToggle={() => toggleSection("print")}>
+        <FormField label="喷嘴温度" field="nozzle_temp" placeholder="如：190-230°C" values={values} update={update} />
+        <FormField label="热床温度" field="bed_temp" placeholder="如：35-45°C" values={values} update={update} />
+        <FormField label="打印速度" field="print_speed" placeholder="如：≤300 mm/s" values={values} update={update} />
+      </CollapsibleSection>
+
+      {/* 技术参数 */}
+      <CollapsibleSection title="技术参数（选填）" open={openSections.tech} onToggle={() => toggleSection("tech")}>
+        <FormField label="密度" field="density" placeholder="如：1.24g/cm³" values={values} update={update} />
+        <FormField label="直径" field="diameter" placeholder="如：1.75mm" values={values} update={update} />
+        <FormField label="标称重量" field="nominal_weight" placeholder="如：1000g" values={values} update={update} />
+        <FormField label="软化温度" field="softening_temp" placeholder="如：78°C" values={values} update={update} />
+        <FormField label="腔体温度" field="chamber_temp" placeholder="如：40°C" values={values} update={update} />
+        <FormField label="熨烫流量" field="ironing_flow" placeholder="如：10%" values={values} update={update} />
+        <FormField label="熨烫速度" field="ironing_speed" placeholder="如：100mm/s" values={values} update={update} />
+        <FormField label="收缩率" field="shrinkage" placeholder="如：0.3%" values={values} update={update} />
+        <FormField label="空卷重量" field="empty_spool_weight" placeholder="如：127g" values={values} update={update} />
+        <FormField label="压力提前 K 值" field="pressure_advance" placeholder="如：0.014" values={values} update={update} />
+      </CollapsibleSection>
+
+      {/* 风扇速度 */}
+      <CollapsibleSection title="风扇速度（选填）" open={openSections.fan} onToggle={() => toggleSection("fan")}>
+        <FormField label="最小风扇速度" field="fan_min" placeholder="如：10%" values={values} update={update} />
+        <FormField label="最大风扇速度" field="fan_max" placeholder="如：80%" values={values} update={update} />
+      </CollapsibleSection>
+
+      {/* 首层速度 */}
+      <CollapsibleSection title="首层速度（选填）" open={openSections.firstLayer} onToggle={() => toggleSection("firstLayer")}>
+        <FormField label="首层墙速度" field="first_layer_walls" placeholder="如：50mm/s" values={values} update={update} />
+        <FormField label="首层填充速度" field="first_layer_infill" placeholder="如：50mm/s" values={values} update={update} />
+        <FormField label="首层外墙速度" field="first_layer_outer_wall" placeholder="如：30mm/s" values={values} update={update} />
+        <FormField label="首层顶面速度" field="first_layer_top_surface" placeholder="如：40mm/s" values={values} update={update} />
+      </CollapsibleSection>
+
+      {/* 其他层速度 */}
+      <CollapsibleSection title="其他层速度（选填）" open={openSections.otherLayers} onToggle={() => toggleSection("otherLayers")}>
+        <FormField label="其他层墙速度" field="other_layers_walls" placeholder="如：200mm/s" values={values} update={update} />
+        <FormField label="其他层填充速度" field="other_layers_infill" placeholder="如：250mm/s" values={values} update={update} />
+        <FormField label="其他层外墙速度" field="other_layers_outer_wall" placeholder="如：150mm/s" values={values} update={update} />
+        <FormField label="其他层顶面速度" field="other_layers_top_surface" placeholder="如：180mm/s" values={values} update={update} />
+      </CollapsibleSection>
+
+      {/* 色彩数据 */}
+      <CollapsibleSection title="色彩数据（选填）" open={openSections.color} onToggle={() => toggleSection("color")}>
+        <FormField label="实测 RGB" field="measured_rgb" placeholder="如：#5C8A3C" values={values} update={update} />
+        <FormField label="最高投票 TD 值" field="top_voted_td" placeholder="如：2.5" values={values} update={update} />
+        <FormField label="TD 投票数" field="num_td_votes" placeholder="如：12" values={values} update={update} />
+      </CollapsibleSection>
+
+      {/* 流量特性 */}
+      <CollapsibleSection title="流量特性（选填）" open={openSections.flow} onToggle={() => toggleSection("flow")}>
+        <FormField label="最大体积速度" field="max_volumetric_speed" placeholder="如：16mm³/s" values={values} update={update} />
+        <FormField label="流量比" field="flow_ratio" placeholder="如：0.95" values={values} update={update} />
+      </CollapsibleSection>
+
+      {/* 干燥信息 */}
+      <CollapsibleSection title="干燥信息（选填）" open={openSections.drying} onToggle={() => toggleSection("drying")}>
+        <FormField label="干燥温度" field="drying_temp" placeholder="如：70°C" values={values} update={update} />
+        <FormField label="干燥时间" field="dry_time" placeholder="如：12小时" values={values} update={update} />
+      </CollapsibleSection>
+
+      {/* 兼容性 */}
+      <CollapsibleSection title="兼容性（选填）" open={openSections.compat} onToggle={() => toggleSection("compat")}>
+        <FormField label="AMS 兼容性" field="ams_compatibility" placeholder="如：兼容 AMS" values={values} update={update} />
+        <FormField label="适用热床板" field="build_plates" placeholder="如：PEI / 纹理板" values={values} update={update} />
+      </CollapsibleSection>
 
       {/* Logo 管理 */}
       <div className="space-y-2">

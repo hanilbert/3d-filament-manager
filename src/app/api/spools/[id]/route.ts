@@ -52,3 +52,19 @@ export async function PATCH(
     return NextResponse.json({ error: "更新失败" }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const authError = requireAuth(request);
+  if (authError) return authError;
+
+  const { id } = await params;
+  try {
+    await prisma.spool.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json({ error: "删除失败" }, { status: 500 });
+  }
+}

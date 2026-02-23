@@ -17,6 +17,52 @@ model GlobalFilament {
   bed_temp    String?
   print_speed String?
   logo_url    String?
+
+  // Technical Details
+  density            String?
+  diameter           String?
+  nominal_weight     String?
+  softening_temp     String?
+  chamber_temp       String?
+  ironing_flow       String?
+  ironing_speed      String?
+  shrinkage          String?
+  empty_spool_weight String?
+  pressure_advance   String?
+
+  // Fan Speed
+  fan_min String?
+  fan_max String?
+
+  // First Layer Speeds
+  first_layer_walls       String?
+  first_layer_infill      String?
+  first_layer_outer_wall  String?
+  first_layer_top_surface String?
+
+  // Other Layers
+  other_layers_walls       String?
+  other_layers_infill      String?
+  other_layers_outer_wall  String?
+  other_layers_top_surface String?
+
+  // Tested Color Data
+  measured_rgb  String?
+  top_voted_td  String?
+  num_td_votes  String?
+
+  // Flow Characteristics
+  max_volumetric_speed String?
+  flow_ratio           String?
+
+  // Drying Info
+  drying_temp String?
+  dry_time    String?
+
+  // AMS Compatibility & Build Plates
+  ams_compatibility String?
+  build_plates      String?
+
   created_at  DateTime @default(now())
 
   spools Spool[]

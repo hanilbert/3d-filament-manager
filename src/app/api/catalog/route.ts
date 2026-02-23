@@ -140,24 +140,31 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { brand, material, color_name, color_hex, nozzle_temp, bed_temp, print_speed, logo_url } = body;
+    const { brand, material, color_name } = body;
 
     if (!brand || !material || !color_name) {
       return NextResponse.json({ error: "缺少必填字段" }, { status: 400 });
     }
 
-    const item = await prisma.globalFilament.create({
-      data: {
-        brand,
-        material,
-        color_name,
-        color_hex: color_hex || undefined,
-        nozzle_temp: nozzle_temp || undefined,
-        bed_temp: bed_temp || undefined,
-        print_speed: print_speed || undefined,
-        logo_url: logo_url || undefined,
-      },
-    });
+    const optionalFields = [
+      "color_hex", "nozzle_temp", "bed_temp", "print_speed", "logo_url",
+      "density", "diameter", "nominal_weight", "softening_temp", "chamber_temp",
+      "ironing_flow", "ironing_speed", "shrinkage", "empty_spool_weight", "pressure_advance",
+      "fan_min", "fan_max",
+      "first_layer_walls", "first_layer_infill", "first_layer_outer_wall", "first_layer_top_surface",
+      "other_layers_walls", "other_layers_infill", "other_layers_outer_wall", "other_layers_top_surface",
+      "measured_rgb", "top_voted_td", "num_td_votes",
+      "max_volumetric_speed", "flow_ratio",
+      "drying_temp", "dry_time",
+      "ams_compatibility", "build_plates",
+    ] as const;
+
+    const data: Record<string, string> = { brand, material, color_name };
+    for (const f of optionalFields) {
+      if (body[f]) data[f] = body[f];
+    }
+
+    const item = await prisma.globalFilament.create({ data });
 
     return NextResponse.json(item, { status: 201 });
   } catch {

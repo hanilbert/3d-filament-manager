@@ -19,11 +19,66 @@ interface CatalogDetail {
   bed_temp?: string | null;
   print_speed?: string | null;
   logo_url?: string | null;
+  // Technical Details
+  density?: string | null;
+  diameter?: string | null;
+  nominal_weight?: string | null;
+  softening_temp?: string | null;
+  chamber_temp?: string | null;
+  ironing_flow?: string | null;
+  ironing_speed?: string | null;
+  shrinkage?: string | null;
+  empty_spool_weight?: string | null;
+  pressure_advance?: string | null;
+  // Fan Speed
+  fan_min?: string | null;
+  fan_max?: string | null;
+  // First Layer Speeds
+  first_layer_walls?: string | null;
+  first_layer_infill?: string | null;
+  first_layer_outer_wall?: string | null;
+  first_layer_top_surface?: string | null;
+  // Other Layers
+  other_layers_walls?: string | null;
+  other_layers_infill?: string | null;
+  other_layers_outer_wall?: string | null;
+  other_layers_top_surface?: string | null;
+  // Tested Color Data
+  measured_rgb?: string | null;
+  top_voted_td?: string | null;
+  num_td_votes?: string | null;
+  // Flow Characteristics
+  max_volumetric_speed?: string | null;
+  flow_ratio?: string | null;
+  // Drying Info
+  drying_temp?: string | null;
+  dry_time?: string | null;
+  // AMS & Build Plates
+  ams_compatibility?: string | null;
+  build_plates?: string | null;
   spools: Array<{
     id: string;
     status: string;
     location: { name: string } | null;
   }>;
+}
+
+function ParamSection({ title, items }: { title: string; items: { label: string; value?: string | null }[] }) {
+  const filled = items.filter((i) => i.value);
+  if (filled.length === 0) return null;
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground mb-2 font-medium">{title}</p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {filled.map(({ label, value }) => (
+          <div key={label} className="p-3 bg-muted/50 rounded-lg text-center">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="text-sm font-medium mt-0.5">{value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function CatalogDetailPage() {
@@ -114,20 +169,72 @@ export default function CatalogDetailPage() {
         </div>
 
         {/* 打印参数 */}
-        {(item.nozzle_temp || item.bed_temp || item.print_speed) && (
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: "喷嘴温度", value: item.nozzle_temp },
-              { label: "热床温度", value: item.bed_temp },
-              { label: "打印速度", value: item.print_speed },
-            ].filter(({ value }) => value).map(({ label, value }) => (
-              <div key={label} className="p-3 bg-muted/50 rounded-lg text-center">
-                <p className="text-xs text-muted-foreground">{label}</p>
-                <p className="text-sm font-medium mt-0.5">{value}</p>
-              </div>
-            ))}
-          </div>
-        )}
+        <ParamSection title="打印参数" items={[
+          { label: "喷嘴温度", value: item.nozzle_temp },
+          { label: "热床温度", value: item.bed_temp },
+          { label: "打印速度", value: item.print_speed },
+        ]} />
+
+        {/* 技术参数 */}
+        <ParamSection title="技术参数" items={[
+          { label: "密度", value: item.density },
+          { label: "直径", value: item.diameter },
+          { label: "标称重量", value: item.nominal_weight },
+          { label: "软化温度", value: item.softening_temp },
+          { label: "腔体温度", value: item.chamber_temp },
+          { label: "熨烫流量", value: item.ironing_flow },
+          { label: "熨烫速度", value: item.ironing_speed },
+          { label: "收缩率", value: item.shrinkage },
+          { label: "空卷重量", value: item.empty_spool_weight },
+          { label: "压力提前 K", value: item.pressure_advance },
+        ]} />
+
+        {/* 风扇速度 */}
+        <ParamSection title="风扇速度" items={[
+          { label: "最小风扇", value: item.fan_min },
+          { label: "最大风扇", value: item.fan_max },
+        ]} />
+
+        {/* 首层速度 */}
+        <ParamSection title="首层速度" items={[
+          { label: "墙速度", value: item.first_layer_walls },
+          { label: "填充速度", value: item.first_layer_infill },
+          { label: "外墙速度", value: item.first_layer_outer_wall },
+          { label: "顶面速度", value: item.first_layer_top_surface },
+        ]} />
+
+        {/* 其他层速度 */}
+        <ParamSection title="其他层速度" items={[
+          { label: "墙速度", value: item.other_layers_walls },
+          { label: "填充速度", value: item.other_layers_infill },
+          { label: "外墙速度", value: item.other_layers_outer_wall },
+          { label: "顶面速度", value: item.other_layers_top_surface },
+        ]} />
+
+        {/* 色彩数据 */}
+        <ParamSection title="色彩数据" items={[
+          { label: "实测 RGB", value: item.measured_rgb },
+          { label: "最高投票 TD", value: item.top_voted_td },
+          { label: "TD 投票数", value: item.num_td_votes },
+        ]} />
+
+        {/* 流量特性 */}
+        <ParamSection title="流量特性" items={[
+          { label: "最大体积速度", value: item.max_volumetric_speed },
+          { label: "流量比", value: item.flow_ratio },
+        ]} />
+
+        {/* 干燥信息 */}
+        <ParamSection title="干燥信息" items={[
+          { label: "干燥温度", value: item.drying_temp },
+          { label: "干燥时间", value: item.dry_time },
+        ]} />
+
+        {/* 兼容性 */}
+        <ParamSection title="兼容性" items={[
+          { label: "AMS 兼容性", value: item.ams_compatibility },
+          { label: "适用热床板", value: item.build_plates },
+        ]} />
 
         {/* 加入料卷按钮 */}
         <Button className="w-full h-14 text-base" onClick={handleAddSpool} disabled={adding}>

@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ColorSwatch } from "@/components/ColorSwatch";
@@ -11,6 +10,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { QRScanner } from "@/components/QRScanner";
 import { apiFetch } from "@/lib/fetch";
+import { SpoolLabelPrinter } from "./print/spool-label-printer";
 
 interface SpoolDetail {
   id: string;
@@ -26,8 +26,55 @@ interface SpoolDetail {
     bed_temp?: string | null;
     print_speed?: string | null;
     logo_url?: string | null;
+    density?: string | null;
+    diameter?: string | null;
+    nominal_weight?: string | null;
+    softening_temp?: string | null;
+    chamber_temp?: string | null;
+    ironing_flow?: string | null;
+    ironing_speed?: string | null;
+    shrinkage?: string | null;
+    empty_spool_weight?: string | null;
+    pressure_advance?: string | null;
+    fan_min?: string | null;
+    fan_max?: string | null;
+    first_layer_walls?: string | null;
+    first_layer_infill?: string | null;
+    first_layer_outer_wall?: string | null;
+    first_layer_top_surface?: string | null;
+    other_layers_walls?: string | null;
+    other_layers_infill?: string | null;
+    other_layers_outer_wall?: string | null;
+    other_layers_top_surface?: string | null;
+    measured_rgb?: string | null;
+    top_voted_td?: string | null;
+    num_td_votes?: string | null;
+    max_volumetric_speed?: string | null;
+    flow_ratio?: string | null;
+    drying_temp?: string | null;
+    dry_time?: string | null;
+    ams_compatibility?: string | null;
+    build_plates?: string | null;
   };
   location: { id: string; name: string } | null;
+}
+
+function SpoolParamSection({ title, items }: { title: string; items: { label: string; value?: string | null }[] }) {
+  const filled = items.filter((i) => i.value);
+  if (filled.length === 0) return null;
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground mb-2 font-medium">{title}</p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {filled.map(({ label, value }) => (
+          <div key={label} className="p-3 bg-muted/50 rounded-lg text-center">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="text-sm font-medium mt-0.5">{value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function SpoolDetailPage() {
@@ -36,7 +83,9 @@ export default function SpoolDetailPage() {
   const [spool, setSpool] = useState<SpoolDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [showScanner, setShowScanner] = useState(false);
+  const [showLabelPrinter, setShowLabelPrinter] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
 
   const load = useCallback(async () => {
@@ -81,6 +130,16 @@ export default function SpoolDetailPage() {
       setSpool(updated);
     } catch {
       setStatusMsg("操作失败，请重试");
+    }
+  }
+
+  async function handleDelete() {
+    setShowDeleteConfirm(false);
+    try {
+      await apiFetch(`/api/spools/${id}`, { method: "DELETE" });
+      router.push("/spools");
+    } catch {
+      setStatusMsg("删除失败，请重试");
     }
   }
 
@@ -169,20 +228,72 @@ export default function SpoolDetailPage() {
         </div>
 
         {/* 打印参数 */}
-        {(gf.nozzle_temp || gf.bed_temp || gf.print_speed) && (
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: "喷嘴温度", value: gf.nozzle_temp },
-              { label: "热床温度", value: gf.bed_temp },
-              { label: "打印速度", value: gf.print_speed },
-            ].filter(({ value }) => value).map(({ label, value }) => (
-              <div key={label} className="p-3 bg-muted/50 rounded-lg text-center">
-                <p className="text-xs text-muted-foreground">{label}</p>
-                <p className="text-sm font-medium mt-0.5">{value}</p>
-              </div>
-            ))}
-          </div>
-        )}
+        <SpoolParamSection title="打印参数" items={[
+          { label: "喷嘴温度", value: gf.nozzle_temp },
+          { label: "热床温度", value: gf.bed_temp },
+          { label: "打印速度", value: gf.print_speed },
+        ]} />
+
+        {/* 技术参数 */}
+        <SpoolParamSection title="技术参数" items={[
+          { label: "密度", value: gf.density },
+          { label: "直径", value: gf.diameter },
+          { label: "标称重量", value: gf.nominal_weight },
+          { label: "软化温度", value: gf.softening_temp },
+          { label: "腔体温度", value: gf.chamber_temp },
+          { label: "熨烫流量", value: gf.ironing_flow },
+          { label: "熨烫速度", value: gf.ironing_speed },
+          { label: "收缩率", value: gf.shrinkage },
+          { label: "空卷重量", value: gf.empty_spool_weight },
+          { label: "压力提前 K", value: gf.pressure_advance },
+        ]} />
+
+        {/* 风扇速度 */}
+        <SpoolParamSection title="风扇速度" items={[
+          { label: "最小风扇", value: gf.fan_min },
+          { label: "最大风扇", value: gf.fan_max },
+        ]} />
+
+        {/* 首层速度 */}
+        <SpoolParamSection title="首层速度" items={[
+          { label: "墙速度", value: gf.first_layer_walls },
+          { label: "填充速度", value: gf.first_layer_infill },
+          { label: "外墙速度", value: gf.first_layer_outer_wall },
+          { label: "顶面速度", value: gf.first_layer_top_surface },
+        ]} />
+
+        {/* 其他层速度 */}
+        <SpoolParamSection title="其他层速度" items={[
+          { label: "墙速度", value: gf.other_layers_walls },
+          { label: "填充速度", value: gf.other_layers_infill },
+          { label: "外墙速度", value: gf.other_layers_outer_wall },
+          { label: "顶面速度", value: gf.other_layers_top_surface },
+        ]} />
+
+        {/* 色彩数据 */}
+        <SpoolParamSection title="色彩数据" items={[
+          { label: "实测 RGB", value: gf.measured_rgb },
+          { label: "最高投票 TD", value: gf.top_voted_td },
+          { label: "TD 投票数", value: gf.num_td_votes },
+        ]} />
+
+        {/* 流量特性 */}
+        <SpoolParamSection title="流量特性" items={[
+          { label: "最大体积速度", value: gf.max_volumetric_speed },
+          { label: "流量比", value: gf.flow_ratio },
+        ]} />
+
+        {/* 干燥信息 */}
+        <SpoolParamSection title="干燥信息" items={[
+          { label: "干燥温度", value: gf.drying_temp },
+          { label: "干燥时间", value: gf.dry_time },
+        ]} />
+
+        {/* 兼容性 */}
+        <SpoolParamSection title="兼容性" items={[
+          { label: "AMS 兼容性", value: gf.ams_compatibility },
+          { label: "适用热床板", value: gf.build_plates },
+        ]} />
 
         {/* 当前位置 */}
         <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
@@ -218,11 +329,20 @@ export default function SpoolDetailPage() {
                 />
               )}
 
-              <Link href={`/spool/${id}/print`} target="_blank">
-                <Button className="w-full h-14 text-base" variant="outline">
-                  打印标签
-                </Button>
-              </Link>
+              <Button
+                className="w-full h-14 text-base"
+                variant="outline"
+                onClick={() => setShowLabelPrinter(!showLabelPrinter)}
+              >
+                {showLabelPrinter ? "关闭标签预览" : "标签预览"}
+              </Button>
+
+              {showLabelPrinter && spool && (
+                <SpoolLabelPrinter
+                  globalFilament={spool.globalFilament}
+                  qrUrl={`${window.location.origin}/spool/${id}`}
+                />
+              )}
 
               <Button
                 className="w-full h-14 text-base"
@@ -231,14 +351,32 @@ export default function SpoolDetailPage() {
               >
                 标记为已用完
               </Button>
+
+              <Button
+                className="w-full h-14 text-base"
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                删除料卷
+              </Button>
             </>
           ) : (
-            <Button
-              className="w-full h-14 text-base"
-              onClick={handleRestock}
-            >
-              重新入库
-            </Button>
+            <>
+              <Button
+                className="w-full h-14 text-base"
+                onClick={handleRestock}
+              >
+                重新入库
+              </Button>
+
+              <Button
+                className="w-full h-14 text-base"
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                删除料卷
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -250,6 +388,15 @@ export default function SpoolDetailPage() {
         confirmLabel="确认用完"
         onConfirm={handleMarkEmpty}
         onCancel={() => setShowConfirm(false)}
+      />
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="删除料卷"
+        description="确认删除此料卷？此操作不可撤销。"
+        confirmLabel="确认删除"
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
       />
     </div>
   );
