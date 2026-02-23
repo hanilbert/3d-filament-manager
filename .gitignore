@@ -38,6 +38,8 @@ yarn-error.log*
 # data directory (SQLite db and logos)
 /data/
 /prisma/data/
+/prisma/dev.db
+/prisma/*.db
 
 # vercel
 .vercel
