@@ -8,10 +8,11 @@ datasource db {
 }
 
 model GlobalFilament {
-  id          String   @id @default(uuid())
-  brand       String
-  material    String
-  color_name  String
+  id            String   @id @default(uuid())
+  brand         String
+  material      String
+  material_type String?
+  color_name    String
   color_hex   String?
   nozzle_temp String?
   bed_temp    String?
