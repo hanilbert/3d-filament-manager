@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { getToken } from "@/lib/fetch";
 
 interface FormValues {
   brand: string;
+  material_type: string;
   material: string;
   color_name: string;
   color_hex: string;
@@ -64,6 +65,7 @@ interface CatalogFormProps {
 
 const DEFAULT: FormValues = {
   brand: "",
+  material_type: "",
   material: "",
   color_name: "",
   color_hex: "",
@@ -139,6 +141,15 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [materialTypes, setMaterialTypes] = useState<string[]>([]);
+  const MATERIAL_PRESETS = [
+    "PLA", "PLA+/Pro", "PETG", "ABS", "ABS+", "APLA", "ASA", "ASA+",
+    "CoPA", "CPE", "HIPS", "HT-PLA", "PA (Nylon)", "PA12", "PA6", "PA612",
+    "PAHT", "PBT", "PC", "PC-ABS", "PCL", "PCTG", "PE", "PEBA", "PEEK",
+    "PET", "PETG+", "PHA", "PIPG", "PMMA", "PP", "PPA", "PPS", "PVA",
+    "PVB", "SAN", "SBS", "SMP", "TPE", "TPR", "TPU",
+  ];
+  const allMaterialOptions = Array.from(new Set([...MATERIAL_PRESETS, ...materialTypes])).sort();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
     const iv = initialValues || {};
     return {
@@ -157,6 +168,19 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
   function toggleSection(key: string) {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
   }
+
+  // Load existing material types for the dropdown
+  useEffect(() => {
+    async function loadTypes() {
+      try {
+        const data = await apiFetch<{ material_type: string }[]>("/api/catalog?groupBy=material");
+        setMaterialTypes(data.map((d) => d.material_type));
+      } catch {
+        // silently fail — user can still type manually
+      }
+    }
+    loadTypes();
+  }, []);
 
   function update(field: keyof FormValues, value: string) {
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -190,9 +214,18 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
     setSaving(true);
 
     try {
+      // Validate material_type is not empty or sentinel value
+      const materialType = values.material_type?.trim();
+      if (!materialType || materialType === "__custom") {
+        setError("请选择或输入材料");
+        setSaving(false);
+        return;
+      }
+
       const body: Record<string, string | undefined> = {
         brand: values.brand,
-        material: values.material,
+        material_type: materialType,
+        material: values.material || undefined,
         color_name: values.color_name,
       };
       const optionalKeys: (keyof FormValues)[] = [
@@ -239,8 +272,45 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="material">材质 *</Label>
-        <Input id="material" value={values.material} onChange={(e) => update("material", e.target.value)} placeholder="如：PLA Matte" required className="h-12" />
+        <Label htmlFor="material_type">材料 *</Label>
+        <div className="relative">
+          <select
+            id="material_type"
+            value={allMaterialOptions.includes(values.material_type) ? values.material_type : values.material_type === "" ? "" : "__custom"}
+            onChange={(e) => {
+              if (e.target.value === "__custom") {
+                update("material_type", "");
+              } else {
+                update("material_type", e.target.value);
+              }
+            }}
+            className="w-full h-12 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring appearance-none"
+          >
+            <option value="">选择材料...</option>
+            {allMaterialOptions.map((mt) => (
+              <option key={mt} value={mt}>{mt}</option>
+            ))}
+            <option value="__custom">自定义...</option>
+          </select>
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 absolute right-3 top-4 pointer-events-none text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+        {values.material_type !== "" && !allMaterialOptions.includes(values.material_type) && (
+          <Input
+            value={values.material_type}
+            onChange={(e) => update("material_type", e.target.value)}
+            placeholder="输入材料名称，如：ASA"
+            className="h-12 mt-1"
+            autoFocus
+            required
+          />
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="material">材料类型（选填）</Label>
+        <Input id="material" value={values.material} onChange={(e) => update("material", e.target.value)} placeholder="如：Matte、Silk、95A" className="h-12" />
       </div>
 
       <div className="space-y-2">

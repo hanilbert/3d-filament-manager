@@ -1,54 +1,59 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "@/lib/fetch";
 
-interface MaterialTypeGroup {
-  material_type: string;
-  subMaterialCount: number;
+interface SubMaterial {
+  material: string;
   brandCount: number;
-  count: number;
+  colorCount: number;
   spoolCount: number;
 }
 
-export default function MaterialsPage() {
-  const [types, setTypes] = useState<MaterialTypeGroup[]>([]);
+export default function MaterialTypePage() {
+  const { type: encodedType } = useParams<{ type: string }>();
+  const materialType = decodeURIComponent(encodedType);
+  const router = useRouter();
+  const [subs, setSubs] = useState<SubMaterial[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
-        const data = await apiFetch<MaterialTypeGroup[]>("/api/catalog?groupBy=material");
-        setTypes(data);
+        const data = await apiFetch<SubMaterial[]>(
+          `/api/catalog?groupBy=materialType&materialType=${encodeURIComponent(materialType)}`
+        );
+        setSubs(data);
       } finally {
         setLoading(false);
       }
     }
     load();
-  }, []);
+  }, [materialType]);
 
   return (
     <div className="mx-auto max-w-lg md:max-w-4xl">
-      <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-semibold">材料</h1>
-        <Link href="/catalog/new" className="text-sm text-primary font-medium">
-          + 新建
-        </Link>
+      <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
+        <button onClick={() => router.back()} className="text-muted-foreground">
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <h1 className="text-lg font-semibold">{materialType}</h1>
+        <span className="text-sm text-muted-foreground ml-auto">材料类型</span>
       </div>
 
       <div className="p-4 space-y-2">
         {loading ? (
           <p className="text-center text-muted-foreground py-8">加载中...</p>
-        ) : types.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">
-            暂无数据，
-            <Link href="/catalog/new" className="text-primary underline">新建耗材</Link>
-          </p>
+        ) : subs.length === 0 ? (
+          <p className="text-center text-muted-foreground py-8">该材料暂无类型</p>
         ) : (
           <div className="space-y-2 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-3 md:space-y-0">
-            {types.map((t) => (
-              <Link key={t.material_type} href={`/catalog/material-type/${encodeURIComponent(t.material_type)}`}>
+            {subs.map((s) => (
+              <Link key={s.material} href={`/catalog/material/${encodeURIComponent(s.material)}`}>
                 <div className="flex items-center gap-3 p-4 bg-card border border-border rounded-lg active:bg-muted transition-colors hover:bg-muted/50">
                   <div className="w-10 h-10 rounded-lg bg-muted/50 flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-5 h-5 text-muted-foreground">
@@ -56,13 +61,13 @@ export default function MaterialsPage() {
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">{t.material_type}</p>
+                    <p className="font-medium text-sm">{s.material}</p>
                     <p className="text-xs text-muted-foreground truncate mt-0.5">
-                      {t.subMaterialCount} 种类型 · {t.brandCount} 个品牌
+                      {s.brandCount} 个品牌 · {s.colorCount} 种颜色
                     </p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-medium">{t.spoolCount}</p>
+                    <p className="text-sm font-medium">{s.spoolCount}</p>
                     <p className="text-xs text-muted-foreground">卷</p>
                   </div>
                 </div>
