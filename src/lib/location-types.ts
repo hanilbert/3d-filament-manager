@@ -8,6 +8,8 @@ export const LOCATION_TYPES = [
 
 export type LocationType = (typeof LOCATION_TYPES)[number]["value"];
 
+const CUSTOM_TYPE = LOCATION_TYPES.find((t) => t.value === "custom")!;
+
 export function getLocationType(type: string) {
-  return LOCATION_TYPES.find((t) => t.value === type) ?? LOCATION_TYPES[4]; // fallback to custom
+  return LOCATION_TYPES.find((t) => t.value === type) ?? CUSTOM_TYPE;
 }

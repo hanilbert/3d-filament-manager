@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import { ConditionalNav } from "@/components/ConditionalNav";
-import { SideNav } from "@/components/SideNav";
+import { ConditionalSideNav } from "@/components/ConditionalSideNav";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,7 +32,7 @@ export default function RootLayout({
       >
         {/* 桌面端侧边栏 */}
         <div className="hidden md:flex md:w-56 md:flex-col md:fixed md:inset-y-0">
-          <SideNav />
+          <ConditionalSideNav />
         </div>
         {/* 主内容区 */}
         <main className="md:pl-56 pb-16 md:pb-0">{children}</main>

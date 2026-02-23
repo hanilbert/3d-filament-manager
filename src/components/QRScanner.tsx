@@ -10,6 +10,8 @@ interface QRScannerProps {
 
 export function QRScanner({ onResult, onClose }: QRScannerProps) {
   const scannerRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
+  const onResultRef = useRef(onResult);
+  onResultRef.current = onResult;
   const elementId = "qr-scanner-container";
 
   useEffect(() => {
@@ -25,7 +27,7 @@ export function QRScanner({ onResult, onClose }: QRScannerProps) {
           { facingMode: "environment" },
           { fps: 10, qrbox: { width: 220, height: 220 } },
           (decodedText) => {
-            onResult(decodedText);
+            onResultRef.current(decodedText);
             html5QrCode.stop().catch(() => {});
           },
           undefined
@@ -42,7 +44,7 @@ export function QRScanner({ onResult, onClose }: QRScannerProps) {
         scannerRef.current.stop().catch(() => {});
       }
     };
-  }, [onResult]);
+  }, []);
 
   return (
     <div className="mt-4 space-y-3">

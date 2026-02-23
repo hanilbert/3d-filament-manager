@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
+import { FILAMENT_ALLOWED_FIELDS } from "@/lib/types";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = requireAuth(request);
+  const authError = await requireAuth(request);
   if (authError) return authError;
 
   const { id } = await params;
@@ -29,28 +30,15 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = requireAuth(request);
+  const authError = await requireAuth(request);
   if (authError) return authError;
 
   const { id } = await params;
   try {
     const body = await request.json();
 
-    const allowedFields = [
-      "brand", "material", "material_type", "color_name", "color_hex", "nozzle_temp", "bed_temp", "print_speed", "logo_url",
-      "density", "diameter", "nominal_weight", "softening_temp", "chamber_temp",
-      "ironing_flow", "ironing_speed", "shrinkage", "empty_spool_weight", "pressure_advance",
-      "fan_min", "fan_max",
-      "first_layer_walls", "first_layer_infill", "first_layer_outer_wall", "first_layer_top_surface",
-      "other_layers_walls", "other_layers_infill", "other_layers_outer_wall", "other_layers_top_surface",
-      "measured_rgb", "top_voted_td", "num_td_votes",
-      "max_volumetric_speed", "flow_ratio",
-      "drying_temp", "dry_time",
-      "ams_compatibility", "build_plates",
-    ] as const;
-
     const data: Record<string, string | null> = {};
-    for (const f of allowedFields) {
+    for (const f of FILAMENT_ALLOWED_FIELDS) {
       if (f in body) data[f] = body[f] || null;
     }
 
@@ -68,7 +56,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = requireAuth(request);
+  const authError = await requireAuth(request);
   if (authError) return authError;
 
   const { id } = await params;

@@ -40,7 +40,8 @@ export default function LoginPage() {
 
       // 存入 Cookie 供中间件使用（7 天）
       const days = 7;
-      document.cookie = `spool_tracker_token=${token}; path=/; max-age=${days * 24 * 3600}; SameSite=Lax`;
+      const secure = location.protocol === 'https:' ? '; Secure' : '';
+      document.cookie = `spool_tracker_token=${token}; path=/; max-age=${days * 24 * 3600}; SameSite=Lax${secure}`;
 
       router.push(from);
     } catch {

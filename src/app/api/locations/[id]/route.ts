@@ -6,7 +6,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = requireAuth(request);
+  const authError = await requireAuth(request);
   if (authError) return authError;
 
   const { id } = await params;
@@ -39,7 +39,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = requireAuth(request);
+  const authError = await requireAuth(request);
   if (authError) return authError;
 
   const { id } = await params;
@@ -61,14 +61,6 @@ export async function PATCH(
       }
     }
 
-    // 如果设为默认，先取消其他默认
-    if (is_default) {
-      await prisma.location.updateMany({
-        where: { is_default: true, id: { not: id } },
-        data: { is_default: false },
-      });
-    }
-
     const data: Record<string, unknown> = {};
     if (name !== undefined) data.name = name.trim();
     if (type !== undefined) data.type = type;
@@ -78,9 +70,19 @@ export async function PATCH(
     if (ams_unit !== undefined) data.ams_unit = ams_unit?.trim() || null;
     if (ams_slot !== undefined) data.ams_slot = ams_slot?.trim() || null;
 
-    const location = await prisma.location.update({
-      where: { id },
-      data,
+    const location = await prisma.$transaction(async (tx) => {
+      // 如果设为默认，先取消其他默认
+      if (is_default) {
+        await tx.location.updateMany({
+          where: { is_default: true, id: { not: id } },
+          data: { is_default: false },
+        });
+      }
+
+      return tx.location.update({
+        where: { id },
+        data,
+      });
     });
 
     return NextResponse.json(location);
@@ -93,17 +95,19 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = requireAuth(request);
+  const authError = await requireAuth(request);
   if (authError) return authError;
 
   const { id } = await params;
   try {
-    await prisma.spool.updateMany({
-      where: { location_id: id },
-      data: { location_id: null },
-    });
+    await prisma.$transaction(async (tx) => {
+      await tx.spool.updateMany({
+        where: { location_id: id },
+        data: { location_id: null },
+      });
 
-    await prisma.location.delete({ where: { id } });
+      await tx.location.delete({ where: { id } });
+    });
     return NextResponse.json({ success: true });
   } catch (e: unknown) {
     const code = (e as { code?: string })?.code;

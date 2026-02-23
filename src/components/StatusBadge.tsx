@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 
 interface StatusBadgeProps {
-  status: "ACTIVE" | "EMPTY";
+  status: string;
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {
@@ -12,9 +12,16 @@ export function StatusBadge({ status }: StatusBadgeProps) {
       </Badge>
     );
   }
+  if (status === "EMPTY") {
+    return (
+      <Badge className="bg-gray-100 text-gray-600 hover:bg-gray-100 border-gray-200">
+        已归档
+      </Badge>
+    );
+  }
   return (
-    <Badge className="bg-gray-100 text-gray-600 hover:bg-gray-100 border-gray-200">
-      已归档
+    <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200">
+      {status}
     </Badge>
   );
 }

@@ -50,7 +50,7 @@ export default function BrandDetailPage() {
     setSaving(true);
     try {
       await apiFetch("/api/catalog/brand-rename", {
-        method: "POST",
+        method: "PATCH",
         body: JSON.stringify({ oldBrand: brand, newBrand: trimmed }),
       });
       router.replace(`/catalog/brand/${encodeURIComponent(trimmed)}`);

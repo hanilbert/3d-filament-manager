@@ -8,10 +8,12 @@ export async function apiFetch<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const token = getToken();
+  const isFormData = options.body instanceof FormData;
   const res = await fetch(path, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      // Don't set Content-Type for FormData — browser sets it with boundary
+      ...(!isFormData ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers ?? {}),
     },
@@ -21,6 +23,7 @@ export async function apiFetch<T>(
     // Token 过期或无效，清除并跳转登录
     if (typeof window !== "undefined") {
       localStorage.removeItem("spool_tracker_token");
+      document.cookie = 'spool_tracker_token=; path=/; max-age=0';
       window.location.href = "/login";
     }
     throw new Error("登录已过期，请重新登录");

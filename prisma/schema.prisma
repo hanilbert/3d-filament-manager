@@ -65,6 +65,7 @@ model GlobalFilament {
   build_plates      String?
 
   created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 
   spools Spool[]
 }
@@ -87,14 +88,20 @@ model Location {
   spools Spool[]
 }
 
+enum SpoolStatus {
+  ACTIVE
+  EMPTY
+}
+
 model Spool {
-  id                 String   @id @default(uuid())
+  id                 String      @id @default(uuid())
   global_filament_id String
   location_id        String?
-  status             String   @default("ACTIVE")
+  status             SpoolStatus @default(ACTIVE)
   metadata           String?
-  created_at         DateTime @default(now())
+  created_at         DateTime    @default(now())
+  updated_at         DateTime    @updatedAt
 
-  globalFilament GlobalFilament @relation(fields: [global_filament_id], references: [id])
+  globalFilament GlobalFilament @relation(fields: [global_filament_id], references: [id], onDelete: Restrict)
   location       Location?      @relation(fields: [location_id], references: [id])
 }

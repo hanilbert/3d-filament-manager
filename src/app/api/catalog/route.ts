@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
+import { FILAMENT_OPTIONAL_FIELDS } from "@/lib/types";
 
 export async function GET(request: NextRequest) {
-  const authError = requireAuth(request);
+  const authError = await requireAuth(request);
   if (authError) return authError;
 
   const { searchParams } = new URL(request.url);
@@ -215,7 +216,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const authError = requireAuth(request);
+  const authError = await requireAuth(request);
   if (authError) return authError;
 
   try {
@@ -227,19 +228,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "缺少必填字段" }, { status: 400 });
     }
 
-    const optionalFields = [
-      "color_hex", "nozzle_temp", "bed_temp", "print_speed", "logo_url",
-      "density", "diameter", "nominal_weight", "softening_temp", "chamber_temp",
-      "ironing_flow", "ironing_speed", "shrinkage", "empty_spool_weight", "pressure_advance",
-      "fan_min", "fan_max",
-      "first_layer_walls", "first_layer_infill", "first_layer_outer_wall", "first_layer_top_surface",
-      "other_layers_walls", "other_layers_infill", "other_layers_outer_wall", "other_layers_top_surface",
-      "measured_rgb", "top_voted_td", "num_td_votes",
-      "max_volumetric_speed", "flow_ratio",
-      "drying_temp", "dry_time",
-      "ams_compatibility", "build_plates",
-    ] as const;
-
     const data: Record<string, string> = { brand, material, color_name };
     // material_type is required
     const materialType = body.material_type?.trim();
@@ -247,52 +235,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "缺少材料字段" }, { status: 400 });
     }
     data.material_type = materialType;
-    for (const f of optionalFields) {
+    for (const f of FILAMENT_OPTIONAL_FIELDS) {
       if (body[f]) data[f] = body[f];
     }
 
-    const item = await prisma.globalFilament.create({
-      data: {
-        brand: data.brand,
-        material: data.material,
-        material_type: data.material_type,
-        color_name: data.color_name,
-        color_hex: data.color_hex,
-        nozzle_temp: data.nozzle_temp,
-        bed_temp: data.bed_temp,
-        print_speed: data.print_speed,
-        logo_url: data.logo_url,
-        density: data.density,
-        diameter: data.diameter,
-        nominal_weight: data.nominal_weight,
-        softening_temp: data.softening_temp,
-        chamber_temp: data.chamber_temp,
-        ironing_flow: data.ironing_flow,
-        ironing_speed: data.ironing_speed,
-        shrinkage: data.shrinkage,
-        empty_spool_weight: data.empty_spool_weight,
-        pressure_advance: data.pressure_advance,
-        fan_min: data.fan_min,
-        fan_max: data.fan_max,
-        first_layer_walls: data.first_layer_walls,
-        first_layer_infill: data.first_layer_infill,
-        first_layer_outer_wall: data.first_layer_outer_wall,
-        first_layer_top_surface: data.first_layer_top_surface,
-        other_layers_walls: data.other_layers_walls,
-        other_layers_infill: data.other_layers_infill,
-        other_layers_outer_wall: data.other_layers_outer_wall,
-        other_layers_top_surface: data.other_layers_top_surface,
-        measured_rgb: data.measured_rgb,
-        top_voted_td: data.top_voted_td,
-        num_td_votes: data.num_td_votes,
-        max_volumetric_speed: data.max_volumetric_speed,
-        flow_ratio: data.flow_ratio,
-        drying_temp: data.drying_temp,
-        dry_time: data.dry_time,
-        ams_compatibility: data.ams_compatibility,
-        build_plates: data.build_plates,
-      }
-    });
+    const item = await prisma.globalFilament.create({ data });
 
     return NextResponse.json(item, { status: 201 });
   } catch {

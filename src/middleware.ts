@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyToken } from "@/lib/auth";
 
-const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/logos"];
+const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/logout", "/api/logos"];
 
-export function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 放行公开路径和静态资源
@@ -14,12 +15,10 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 从 Cookie 中读取 token（页面路由鉴权）
-  // 注意：仅检查 Cookie 是否存在，不在 Edge Runtime 中做内存校验。
-  // 真正的 token 有效性验证由 API 路由层（Node.js Runtime）负责。
+  // 从 Cookie 中读取 token 并验证签名 + 过期时间
   const token = request.cookies.get("spool_tracker_token")?.value;
 
-  if (!token) {
+  if (!token || !(await verifyToken(token))) {
     // API 路由返回 401 JSON，页面路由跳转登录页
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

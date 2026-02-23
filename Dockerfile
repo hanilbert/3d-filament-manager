@@ -2,8 +2,6 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev --ignore-scripts
-# Install all deps including devDeps for build
 RUN npm ci --ignore-scripts
 
 # Stage 2: Build

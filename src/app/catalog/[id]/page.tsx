@@ -8,78 +8,16 @@ import { Button } from "@/components/ui/button";
 import { ColorSwatch } from "@/components/ColorSwatch";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { apiFetch } from "@/lib/fetch";
+import { ParamSection } from "@/components/ParamSection";
+import { GlobalFilament } from "@/lib/types";
+import { ArrowLeft, ChevronRight } from "lucide-react";
 
-interface CatalogDetail {
-  id: string;
-  brand: string;
-  material: string;
-  material_type?: string | null;
-  color_name: string;
-  color_hex?: string | null;
-  nozzle_temp?: string | null;
-  bed_temp?: string | null;
-  print_speed?: string | null;
-  logo_url?: string | null;
-  // Technical Details
-  density?: string | null;
-  diameter?: string | null;
-  nominal_weight?: string | null;
-  softening_temp?: string | null;
-  chamber_temp?: string | null;
-  ironing_flow?: string | null;
-  ironing_speed?: string | null;
-  shrinkage?: string | null;
-  empty_spool_weight?: string | null;
-  pressure_advance?: string | null;
-  // Fan Speed
-  fan_min?: string | null;
-  fan_max?: string | null;
-  // First Layer Speeds
-  first_layer_walls?: string | null;
-  first_layer_infill?: string | null;
-  first_layer_outer_wall?: string | null;
-  first_layer_top_surface?: string | null;
-  // Other Layers
-  other_layers_walls?: string | null;
-  other_layers_infill?: string | null;
-  other_layers_outer_wall?: string | null;
-  other_layers_top_surface?: string | null;
-  // Tested Color Data
-  measured_rgb?: string | null;
-  top_voted_td?: string | null;
-  num_td_votes?: string | null;
-  // Flow Characteristics
-  max_volumetric_speed?: string | null;
-  flow_ratio?: string | null;
-  // Drying Info
-  drying_temp?: string | null;
-  dry_time?: string | null;
-  // AMS & Build Plates
-  ams_compatibility?: string | null;
-  build_plates?: string | null;
+interface CatalogDetail extends GlobalFilament {
   spools: Array<{
     id: string;
     status: string;
     location: { name: string } | null;
   }>;
-}
-
-function ParamSection({ title, items }: { title: string; items: { label: string; value?: string | null }[] }) {
-  const filled = items.filter((i) => i.value);
-  if (filled.length === 0) return null;
-  return (
-    <div>
-      <p className="text-xs text-muted-foreground mb-2 font-medium">{title}</p>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-        {filled.map(({ label, value }) => (
-          <div key={label} className="p-3 bg-muted/50 rounded-lg text-center">
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="text-sm font-medium mt-0.5">{value}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 export default function CatalogDetailPage() {
@@ -133,9 +71,7 @@ export default function CatalogDetailPage() {
     <div className="mx-auto max-w-lg md:max-w-4xl">
       <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
         <button onClick={() => router.back()} className="text-muted-foreground">
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
+          <ArrowLeft className="w-5 h-5" />
         </button>
         <h1 className="text-lg font-semibold flex-1">耗材详情</h1>
         <Link href={`/catalog/${id}/edit`} className="text-sm text-primary font-medium">编辑</Link>
@@ -251,9 +187,7 @@ export default function CatalogDetailPage() {
                 <Link key={s.id} href={`/spool/${s.id}`}>
                   <div className="flex items-center justify-between p-3 bg-card border border-border rounded-lg">
                     <span className="text-sm">{s.location?.name ?? "未分配位置"}</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   </div>
                 </Link>
               ))}

@@ -11,70 +11,17 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { QRScanner } from "@/components/QRScanner";
 import { apiFetch } from "@/lib/fetch";
 import { SpoolLabelPrinter } from "./print/spool-label-printer";
+import { ParamSection } from "@/components/ParamSection";
+import { GlobalFilament } from "@/lib/types";
+import { ArrowLeft } from "lucide-react";
 
 interface SpoolDetail {
   id: string;
   status: "ACTIVE" | "EMPTY";
   created_at: string;
   global_filament_id: string;
-  globalFilament: {
-    brand: string;
-    material: string;
-    color_name: string;
-    color_hex?: string | null;
-    nozzle_temp?: string | null;
-    bed_temp?: string | null;
-    print_speed?: string | null;
-    logo_url?: string | null;
-    density?: string | null;
-    diameter?: string | null;
-    nominal_weight?: string | null;
-    softening_temp?: string | null;
-    chamber_temp?: string | null;
-    ironing_flow?: string | null;
-    ironing_speed?: string | null;
-    shrinkage?: string | null;
-    empty_spool_weight?: string | null;
-    pressure_advance?: string | null;
-    fan_min?: string | null;
-    fan_max?: string | null;
-    first_layer_walls?: string | null;
-    first_layer_infill?: string | null;
-    first_layer_outer_wall?: string | null;
-    first_layer_top_surface?: string | null;
-    other_layers_walls?: string | null;
-    other_layers_infill?: string | null;
-    other_layers_outer_wall?: string | null;
-    other_layers_top_surface?: string | null;
-    measured_rgb?: string | null;
-    top_voted_td?: string | null;
-    num_td_votes?: string | null;
-    max_volumetric_speed?: string | null;
-    flow_ratio?: string | null;
-    drying_temp?: string | null;
-    dry_time?: string | null;
-    ams_compatibility?: string | null;
-    build_plates?: string | null;
-  };
+  globalFilament: Omit<GlobalFilament, "id" | "created_at">;
   location: { id: string; name: string } | null;
-}
-
-function SpoolParamSection({ title, items }: { title: string; items: { label: string; value?: string | null }[] }) {
-  const filled = items.filter((i) => i.value);
-  if (filled.length === 0) return null;
-  return (
-    <div>
-      <p className="text-xs text-muted-foreground mb-2 font-medium">{title}</p>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-        {filled.map(({ label, value }) => (
-          <div key={label} className="p-3 bg-muted/50 rounded-lg text-center">
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="text-sm font-medium mt-0.5">{value}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 export default function SpoolDetailPage() {
@@ -170,9 +117,7 @@ export default function SpoolDetailPage() {
       {/* 顶栏 */}
       <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
         <button onClick={() => router.back()} className="text-muted-foreground">
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
+          <ArrowLeft className="w-5 h-5" />
         </button>
         <h1 className="text-lg font-semibold flex-1">料卷详情</h1>
         <StatusBadge status={spool.status} />
@@ -228,14 +173,14 @@ export default function SpoolDetailPage() {
         </div>
 
         {/* 打印参数 */}
-        <SpoolParamSection title="打印参数" items={[
+        <ParamSection title="打印参数" items={[
           { label: "喷嘴温度", value: gf.nozzle_temp },
           { label: "热床温度", value: gf.bed_temp },
           { label: "打印速度", value: gf.print_speed },
         ]} />
 
         {/* 技术参数 */}
-        <SpoolParamSection title="技术参数" items={[
+        <ParamSection title="技术参数" items={[
           { label: "密度", value: gf.density },
           { label: "直径", value: gf.diameter },
           { label: "标称重量", value: gf.nominal_weight },
@@ -249,13 +194,13 @@ export default function SpoolDetailPage() {
         ]} />
 
         {/* 风扇速度 */}
-        <SpoolParamSection title="风扇速度" items={[
+        <ParamSection title="风扇速度" items={[
           { label: "最小风扇", value: gf.fan_min },
           { label: "最大风扇", value: gf.fan_max },
         ]} />
 
         {/* 首层速度 */}
-        <SpoolParamSection title="首层速度" items={[
+        <ParamSection title="首层速度" items={[
           { label: "墙速度", value: gf.first_layer_walls },
           { label: "填充速度", value: gf.first_layer_infill },
           { label: "外墙速度", value: gf.first_layer_outer_wall },
@@ -263,7 +208,7 @@ export default function SpoolDetailPage() {
         ]} />
 
         {/* 其他层速度 */}
-        <SpoolParamSection title="其他层速度" items={[
+        <ParamSection title="其他层速度" items={[
           { label: "墙速度", value: gf.other_layers_walls },
           { label: "填充速度", value: gf.other_layers_infill },
           { label: "外墙速度", value: gf.other_layers_outer_wall },
@@ -271,26 +216,26 @@ export default function SpoolDetailPage() {
         ]} />
 
         {/* 色彩数据 */}
-        <SpoolParamSection title="色彩数据" items={[
+        <ParamSection title="色彩数据" items={[
           { label: "实测 RGB", value: gf.measured_rgb },
           { label: "最高投票 TD", value: gf.top_voted_td },
           { label: "TD 投票数", value: gf.num_td_votes },
         ]} />
 
         {/* 流量特性 */}
-        <SpoolParamSection title="流量特性" items={[
+        <ParamSection title="流量特性" items={[
           { label: "最大体积速度", value: gf.max_volumetric_speed },
           { label: "流量比", value: gf.flow_ratio },
         ]} />
 
         {/* 干燥信息 */}
-        <SpoolParamSection title="干燥信息" items={[
+        <ParamSection title="干燥信息" items={[
           { label: "干燥温度", value: gf.drying_temp },
           { label: "干燥时间", value: gf.dry_time },
         ]} />
 
         {/* 兼容性 */}
-        <SpoolParamSection title="兼容性" items={[
+        <ParamSection title="兼容性" items={[
           { label: "AMS 兼容性", value: gf.ams_compatibility },
           { label: "适用热床板", value: gf.build_plates },
         ]} />

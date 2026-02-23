@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
-  const authError = requireAuth(request);
+  const authError = await requireAuth(request);
   if (authError) return authError;
 
   const locations = await prisma.location.findMany({
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const authError = requireAuth(request);
+  const authError = await requireAuth(request);
   if (authError) return authError;
 
   try {
@@ -40,24 +40,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 如果设为默认，先取消其他默认
-    if (is_default) {
-      await prisma.location.updateMany({
-        where: { is_default: true },
-        data: { is_default: false },
-      });
-    }
+    const location = await prisma.$transaction(async (tx) => {
+      // 如果设为默认，先取消其他默认
+      if (is_default) {
+        await tx.location.updateMany({
+          where: { is_default: true },
+          data: { is_default: false },
+        });
+      }
 
-    const location = await prisma.location.create({
-      data: {
-        name: name.trim(),
-        type,
-        short_code: short_code?.trim() || undefined,
-        is_default: is_default ?? false,
-        printer_name: printer_name?.trim() || undefined,
-        ams_unit: ams_unit?.trim() || undefined,
-        ams_slot: ams_slot?.trim() || undefined,
-      },
+      return tx.location.create({
+        data: {
+          name: name.trim(),
+          type,
+          short_code: short_code?.trim() || undefined,
+          is_default: is_default ?? false,
+          printer_name: printer_name?.trim() || undefined,
+          ams_unit: ams_unit?.trim() || undefined,
+          ams_slot: ams_slot?.trim() || undefined,
+        },
+      });
     });
 
     return NextResponse.json(location, { status: 201 });
