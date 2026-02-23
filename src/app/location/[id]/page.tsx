@@ -9,6 +9,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DetailRow } from "@/components/DetailRow";
 import { apiFetch } from "@/lib/fetch";
 import { getLocationType } from "@/lib/location-types";
+import { LocationLabelPrinter } from "./print/location-label-printer";
 
 interface LocationDetail {
   id: string;
@@ -38,6 +39,7 @@ export default function LocationDetailPage() {
   const [loc, setLoc] = useState<LocationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showLabelPrinter, setShowLabelPrinter] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -173,12 +175,21 @@ export default function LocationDetailPage() {
                 )}
               </div>
             </div>
-            <Link href={`/location/${id}/print`} target="_blank" className="block mt-3">
-              <Button variant="outline" className="w-full h-12">
-                打印标签
-              </Button>
-            </Link>
+            <Button
+              variant="outline"
+              className="w-full h-12 mt-3"
+              onClick={() => setShowLabelPrinter(!showLabelPrinter)}
+            >
+              {showLabelPrinter ? "关闭标签预览" : "标签预览"}
+            </Button>
           </div>
+
+          {showLabelPrinter && loc && (
+            <LocationLabelPrinter
+              location={loc}
+              qrUrl={`${window.location.origin}/location/${id}`}
+            />
+          )}
 
           {/* 危险操作 */}
           <Button
