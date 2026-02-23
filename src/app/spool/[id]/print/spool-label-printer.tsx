@@ -2,10 +2,16 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { toPng } from "html-to-image";
+import localFont from "next/font/local";
+
+const lxgwFont = localFont({
+  src: "../../../../../fonts/LXGWNeoXiHeiScreenFull.ttf",
+  display: "swap",
+});
 
 // --- Types ---
 
@@ -47,11 +53,12 @@ interface LabelParam {
 // --- Param config (Chinese labels) ---
 
 const LABEL_PARAMS: LabelParam[] = [
+  { key: "color_name", label: "颜色", category: "基本信息", defaultOn: true },
   { key: "nozzle_temp", label: "喷嘴温度", category: "打印参数", defaultOn: true },
   { key: "bed_temp", label: "热床温度", category: "打印参数", defaultOn: true },
-  { key: "print_speed", label: "打印速度", category: "打印参数", defaultOn: false, unit: "mm/s" },
-  { key: "flow_ratio", label: "流量比", category: "流量特性", defaultOn: true },
-  { key: "top_voted_td", label: "TD值", category: "流量特性", defaultOn: true },
+  { key: "print_speed", label: "打印速度", category: "打印参数", defaultOn: true, unit: "mm/s" },
+  { key: "flow_ratio", label: "流量比", category: "流量特性", defaultOn: false },
+  { key: "top_voted_td", label: "TD值", category: "流量特性", defaultOn: false },
   { key: "max_volumetric_speed", label: "最大体积速度", category: "流量特性", defaultOn: false, unit: "mm³/s" },
   { key: "density", label: "密度", category: "技术参数", defaultOn: false, unit: "g/cm³" },
   { key: "diameter", label: "直径", category: "技术参数", defaultOn: false, unit: "mm" },
@@ -77,6 +84,9 @@ interface SpoolLabelPrinterProps {
   qrUrl: string;
 }
 
+const MAX_SLOTS = 4;
+const DEFAULT_SLOTS: (keyof GlobalFilament)[] = ["color_name", "nozzle_temp", "bed_temp", "print_speed"];
+
 export function SpoolLabelPrinter({ globalFilament: gf, qrUrl }: SpoolLabelPrinterProps) {
   const labelRef = useRef<HTMLDivElement>(null);
 
@@ -85,16 +95,11 @@ export function SpoolLabelPrinter({ globalFilament: gf, qrUrl }: SpoolLabelPrint
     [gf]
   );
 
-  const groupedParams = useMemo(() => {
-    const groups: Record<string, LabelParam[]> = {};
-    for (const p of availableParams) {
-      (groups[p.category] ??= []).push(p);
-    }
-    return groups;
-  }, [availableParams]);
-
-  const [selected, setSelected] = useState<Set<string>>(() => {
-    return new Set(LABEL_PARAMS.filter((p) => p.defaultOn).map((p) => p.key));
+  // 4 slots, each holds a param key or "_none"
+  const [slots, setSlots] = useState<string[]>(() => {
+    return DEFAULT_SLOTS.map((k) =>
+      availableParams.some((p) => p.key === k) ? k : "_none"
+    );
   });
 
   useEffect(() => {
@@ -102,27 +107,41 @@ export function SpoolLabelPrinter({ globalFilament: gf, qrUrl }: SpoolLabelPrint
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const keys: string[] = JSON.parse(stored);
-        setSelected(new Set(keys));
+        // Pad to MAX_SLOTS
+        const padded = Array.from({ length: MAX_SLOTS }, (_, i) => keys[i] ?? "_none");
+        setSlots(padded);
       }
     } catch {}
   }, []);
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(selected)));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(slots));
     } catch {}
-  }, [selected]);
+  }, [slots]);
 
-  const toggleParam = (key: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
+  const updateSlot = (index: number, value: string) => {
+    setSlots((prev) => {
+      const next = [...prev];
+      next[index] = value;
       return next;
     });
   };
 
-  const activeParams = availableParams.filter((p) => selected.has(p.key));
+  // Build display rows from slots (skip "_none")
+  const displayRows = useMemo(() => {
+    const rows: { label: string; value: string }[] = [];
+    for (const key of slots) {
+      if (key === "_none") continue;
+      const param = LABEL_PARAMS.find((p) => p.key === key);
+      if (!param) continue;
+      const raw = String(gf[param.key] ?? "");
+      if (!raw) continue;
+      const unit = param.unit && !raw.includes(param.unit) ? param.unit : "";
+      rows.push({ label: param.label, value: `${raw}${unit}` });
+    }
+    return rows;
+  }, [slots, gf]);
 
   const handleDownload = useCallback(async () => {
     if (!labelRef.current) return;
@@ -130,6 +149,8 @@ export function SpoolLabelPrinter({ globalFilament: gf, qrUrl }: SpoolLabelPrint
       const dataUrl = await toPng(labelRef.current, {
         pixelRatio: 4,
         backgroundColor: "#ffffff",
+        fetchRequestInit: { mode: "cors" },
+        skipFonts: true,
       });
       const link = document.createElement("a");
       link.download = `${gf.brand}-${gf.material}-${gf.color_name}.png`;
@@ -140,24 +161,35 @@ export function SpoolLabelPrinter({ globalFilament: gf, qrUrl }: SpoolLabelPrint
     }
   }, [gf.brand, gf.material, gf.color_name]);
 
-  // Layout constants (SVG viewBox 400x300)
+  // Layout constants (SVG viewBox 400x300) — matches wireframe
   const VB_W = 400;
   const VB_H = 300;
-  const PAD = 14;
-  const QR_SIZE = 110;
-  const QR_X = 270;
-  const QR_Y = 20;
-  const BAR_Y = 64;
-  const BAR_W = 260;
-  const BAR_H = 36;
-  const HEX_X = 285;
-  const COLOR_NAME_Y = 129;
-  const PARAM_START_Y = 165;
-  const PARAM_LINE_H = 24;
-  const PARAM_VAL_X = 142;
+  const PAD = 16;
 
-  // Dynamic: if many params, shrink line height
-  const lineH = activeParams.length > 6 ? 20 : PARAM_LINE_H;
+  // QR code (top-right)
+  const QR_SIZE = 130;
+  const QR_X = 251;
+  const QR_Y = 18;
+
+  // Brand logo area: fixed region, logo scales to fit
+  const LOGO_Y = 18;
+  const LOGO_W = 220;
+  const LOGO_H = 70;
+
+  // Material bar (black)
+  const BAR_Y = 103;
+  const BAR_W = 220;
+  const BAR_H = 45;
+
+  // Param area: large bottom region
+  const PARAM_AREA_TOP = 163;
+  const PARAM_AREA_H = 125;
+  const PARAM_LINE_H = 28;
+  const PARAM_FONT = 24;
+  const PARAM_VAL_X = 150;
+
+  // Dynamic line height
+  const lineH = displayRows.length > 4 ? 24 : PARAM_LINE_H;
 
   return (
     <>
@@ -166,34 +198,23 @@ export function SpoolLabelPrinter({ globalFilament: gf, qrUrl }: SpoolLabelPrint
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px", flexWrap: "wrap" }}>
           <div style={{ flex: 1, minWidth: "300px" }}>
             <h3 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "12px", color: "#333" }}>
-              选择要显示的参数
+              选择要显示的参数（最多 {MAX_SLOTS} 个）
             </h3>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
-              {Object.entries(groupedParams).map(([category, params]) => (
-                <div key={category} style={{ minWidth: "140px" }}>
-                  <div style={{ fontSize: "12px", fontWeight: 600, color: "#666", marginBottom: "6px" }}>
-                    {category}
-                  </div>
-                  {params.map((p) => (
-                    <label
-                      key={p.key}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        fontSize: "13px",
-                        cursor: "pointer",
-                        marginBottom: "4px",
-                      }}
-                    >
-                      <Checkbox
-                        checked={selected.has(p.key)}
-                        onCheckedChange={() => toggleParam(p.key)}
-                      />
-                      <span>{p.label}</span>
-                    </label>
-                  ))}
-                </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {slots.map((slotKey, i) => (
+                <Select key={i} value={slotKey} onValueChange={(v) => updateSlot(i, v)}>
+                  <SelectTrigger style={{ width: "160px", fontSize: "13px" }}>
+                    <SelectValue placeholder={`参数 ${i + 1}`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">（空）</SelectItem>
+                    {availableParams.map((p) => (
+                      <SelectItem key={p.key} value={p.key}>
+                        {p.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               ))}
             </div>
           </div>
@@ -225,12 +246,8 @@ export function SpoolLabelPrinter({ globalFilament: gf, qrUrl }: SpoolLabelPrint
           >
             <style>{`
               text { font-family: Arial, Helvetica, sans-serif; }
-              .brand-name { font-weight: bold; font-size: 48px; }
+              .brand-name { font-weight: bold; font-size: 36px; }
               .text-material { font-size: 30px; font-weight: bold; }
-              .text-color { font-size: 30px; }
-              .text-hex { font-size: 24px; }
-              .text-param-label { font-size: 20px; fill: #666; }
-              .text-param-value { font-size: 20px; fill: #000; font-weight: 600; }
               .black-bg { fill: #000000; }
               .white-text { fill: #FFFFFF; }
             `}</style>
@@ -238,57 +255,73 @@ export function SpoolLabelPrinter({ globalFilament: gf, qrUrl }: SpoolLabelPrint
             {/* White background */}
             <rect width="100%" height="100%" fill="#FFFFFF" />
 
-            {/* Brand name */}
-            <text x={PAD} y="54" className="brand-name">
-              {gf.brand}
-            </text>
+            {/* Brand: logo if available, text fallback */}
+            {gf.logo_url ? (
+              <foreignObject x={PAD} y={LOGO_Y} width={LOGO_W} height={LOGO_H}>
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                <div
+                  {...{ xmlns: "http://www.w3.org/1999/xhtml" } as any}
+                  style={{ width: "100%", height: "100%", display: "flex", alignItems: "center" }}
+                >
+                  <img
+                    src={gf.logo_url}
+                    alt={gf.brand}
+                    style={{
+                      height: LOGO_H,
+                      maxWidth: LOGO_W,
+                      objectFit: "contain",
+                      objectPosition: "left center",
+                      filter: "grayscale(100%) contrast(1.2)",
+                    }}
+                  />
+                </div>
+              </foreignObject>
+            ) : (
+              <text x={PAD} y={LOGO_Y + 42} className="brand-name">
+                {gf.brand}
+              </text>
+            )}
 
             {/* QR Code (top-right) */}
             <foreignObject x={QR_X} y={QR_Y} width={QR_SIZE} height={QR_SIZE}>
-              <div xmlns="http://www.w3.org/1999/xhtml" style={{ width: QR_SIZE, height: QR_SIZE, background: "#fff" }}>
-                <QRCodeSVG value={qrUrl} size={QR_SIZE} level="M" includeMargin={false} />
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              <div {...{ xmlns: "http://www.w3.org/1999/xhtml" } as any} style={{ width: QR_SIZE, height: QR_SIZE, background: "#fff" }}>
+                <QRCodeSVG value={qrUrl} size={QR_SIZE} level="M" />
               </div>
             </foreignObject>
 
             {/* Material bar (black) */}
             <rect x={PAD} y={BAR_Y} width={BAR_W} height={BAR_H} className="black-bg" />
-            <text x={PAD + 4} y={BAR_Y + 29} className="white-text text-material">
+            <text x={PAD + 4} y={BAR_Y + BAR_H - 12} className="white-text text-material">
               {gf.material}
             </text>
 
-            {/* Color hex (right of bar) */}
-            {gf.color_hex && (
-              <text x={HEX_X} y={BAR_Y + 26} className="text-hex">
-                {gf.color_hex.toUpperCase()}
-              </text>
-            )}
-
-            {/* Color name */}
-            <text x={PAD} y={COLOR_NAME_Y} className="text-color">
-              {gf.color_name}
-            </text>
-
-            {/* Divider line */}
-            {activeParams.length > 0 && (
-              <line x1={PAD} y1={COLOR_NAME_Y + 10} x2={240} y2={COLOR_NAME_Y + 10} stroke="#000" strokeWidth="1" />
-            )}
-
-            {/* Parameters */}
-            {activeParams.map((p, i) => {
-              const y = PARAM_START_Y + i * lineH;
-              const val = String(gf[p.key] ?? "");
-              const unit = p.unit && !val.includes(p.unit) ? p.unit : "";
-              return (
-                <g key={p.key}>
-                  <text x={PAD} y={y} className="text-param-label">
-                    {p.label}:
-                  </text>
-                  <text x={PARAM_VAL_X} y={y} className="text-param-value">
-                    {val}{unit}
-                  </text>
-                </g>
-              );
-            })}
+            {/* Parameters — rendered with LXGW font via foreignObject */}
+            <foreignObject x={PAD} y={PARAM_AREA_TOP} width={VB_W - PAD * 2} height={PARAM_AREA_H}>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              <div
+                {...{ xmlns: "http://www.w3.org/1999/xhtml" } as any}
+                className={lxgwFont.className}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  fontSize: `${PARAM_FONT}px`,
+                  fontWeight: 700,
+                  color: "#000",
+                  lineHeight: `${lineH}px`,
+                }}
+              >
+                {displayRows.map((row, i) => (
+                  <div key={i} style={{ display: "flex", gap: "8px" }}>
+                    <span style={{ minWidth: `${PARAM_VAL_X - PAD}px`, flexShrink: 0 }}>{row.label}:</span>
+                    <span style={{ fontWeight: 600 }}>{row.value}</span>
+                  </div>
+                ))}
+              </div>
+            </foreignObject>
           </svg>
         </div>
       </div>
