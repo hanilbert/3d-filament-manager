@@ -13,6 +13,7 @@ interface CatalogDetail {
   id: string;
   brand: string;
   material: string;
+  material_type?: string | null;
   color_name: string;
   color_hex?: string | null;
   nozzle_temp?: string | null;
@@ -154,7 +155,7 @@ export default function CatalogDetailPage() {
           )}
           <div>
             <p className="font-bold text-lg">{item.brand}</p>
-            <p className="text-muted-foreground">{item.material}</p>
+            <p className="text-muted-foreground">{item.material_type}{item.material ? ` · ${item.material}` : ""}</p>
           </div>
         </div>
 

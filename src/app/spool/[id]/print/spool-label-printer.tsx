@@ -18,28 +18,29 @@ const lxgwFont = localFont({
 interface GlobalFilament {
   brand: string;
   material: string;
+  material_type?: string | null;
   color_name: string;
-  color_hex: string | null;
-  logo_url: string | null;
-  nozzle_temp: string | null;
-  bed_temp: string | null;
-  print_speed: string | null;
-  density: string | null;
-  diameter: string | null;
-  nominal_weight: string | null;
-  softening_temp: string | null;
-  chamber_temp: string | null;
-  pressure_advance: string | null;
-  shrinkage: string | null;
-  fan_min: string | null;
-  fan_max: string | null;
-  max_volumetric_speed: string | null;
-  flow_ratio: string | null;
-  drying_temp: string | null;
-  dry_time: string | null;
-  ams_compatibility: string | null;
-  build_plates: string | null;
-  top_voted_td: string | null;
+  color_hex?: string | null;
+  logo_url?: string | null;
+  nozzle_temp?: string | null;
+  bed_temp?: string | null;
+  print_speed?: string | null;
+  density?: string | null;
+  diameter?: string | null;
+  nominal_weight?: string | null;
+  softening_temp?: string | null;
+  chamber_temp?: string | null;
+  pressure_advance?: string | null;
+  shrinkage?: string | null;
+  fan_min?: string | null;
+  fan_max?: string | null;
+  max_volumetric_speed?: string | null;
+  flow_ratio?: string | null;
+  drying_temp?: string | null;
+  dry_time?: string | null;
+  ams_compatibility?: string | null;
+  build_plates?: string | null;
+  top_voted_td?: string | null;
 }
 
 interface LabelParam {

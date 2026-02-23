@@ -11,6 +11,7 @@ interface BrandGroup {
   logo_url?: string | null;
   count: number;
   materials: string[];
+  materialTypes: string[];
   spoolCount: number;
 }
 
@@ -18,6 +19,7 @@ interface CatalogItem {
   id: string;
   brand: string;
   material: string;
+  material_type?: string | null;
   color_name: string;
   color_hex?: string | null;
   _count: { spools: number };
@@ -83,10 +85,10 @@ export default function CatalogPage() {
                     <ColorSwatch colorHex={item.color_hex} size="lg" />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">
-                        {item.brand} {item.material}
+                        {item.brand}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {item.color_name}
+                        {item.material_type || ""}{item.material ? ` ${item.material}` : ""} · {item.color_name}
                       </p>
                     </div>
                     <span className="text-xs text-muted-foreground flex-shrink-0">
@@ -116,10 +118,10 @@ function BrandTable({ brands }: { brands: BrandGroup[] }) {
     );
   }
 
-  // 收集所有出现过的材料类型
-  const allMaterials = new Set<string>();
-  brands.forEach((b) => b.materials.forEach((m) => allMaterials.add(m)));
-  const materialCols = Array.from(allMaterials).sort();
+  // 收集所有出现过的材料大类
+  const allMaterialTypes = new Set<string>();
+  brands.forEach((b) => b.materialTypes.forEach((mt) => allMaterialTypes.add(mt)));
+  const materialTypeCols = Array.from(allMaterialTypes).sort();
 
   return (
     <div className="border border-border rounded-lg overflow-x-auto">
@@ -129,9 +131,9 @@ function BrandTable({ brands }: { brands: BrandGroup[] }) {
             <th className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">品牌</th>
             <th className="text-right px-3 py-3 font-medium text-muted-foreground whitespace-nowrap">耗材数</th>
             <th className="text-right px-3 py-3 font-medium text-muted-foreground whitespace-nowrap">材料种类</th>
-            {materialCols.map((m) => (
-              <th key={m} className="text-right px-3 py-3 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">
-                {m}
+            {materialTypeCols.map((mt) => (
+              <th key={mt} className="text-right px-3 py-3 font-medium text-muted-foreground whitespace-nowrap hidden lg:table-cell">
+                {mt}
               </th>
             ))}
             <th className="text-right px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">料卷数</th>
@@ -153,10 +155,10 @@ function BrandTable({ brands }: { brands: BrandGroup[] }) {
                 </Link>
               </td>
               <td className="text-right px-3 py-3 tabular-nums">{b.count}</td>
-              <td className="text-right px-3 py-3 tabular-nums">{b.materials.length}</td>
-              {materialCols.map((m) => (
-                <td key={m} className="text-right px-3 py-3 tabular-nums text-muted-foreground hidden lg:table-cell">
-                  {b.materials.includes(m) ? "·" : ""}
+              <td className="text-right px-3 py-3 tabular-nums">{b.materialTypes.length}</td>
+              {materialTypeCols.map((mt) => (
+                <td key={mt} className="text-right px-3 py-3 tabular-nums text-muted-foreground hidden lg:table-cell">
+                  {b.materialTypes.includes(mt) ? "·" : ""}
                 </td>
               ))}
               <td className="text-right px-4 py-3 tabular-nums">{b.spoolCount}</td>

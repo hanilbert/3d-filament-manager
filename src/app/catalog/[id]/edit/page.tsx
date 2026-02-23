@@ -20,6 +20,7 @@ export default async function EditCatalogPage({ params }: Props) {
         catalogId={id}
         initialValues={{
           brand: item.brand,
+          material_type: item.material_type ?? "",
           material: item.material,
           color_name: item.color_name,
           color_hex: item.color_hex ?? "",
