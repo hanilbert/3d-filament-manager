@@ -13,6 +13,24 @@ export async function GET(request: NextRequest) {
   const materialType = searchParams.get("materialType") || "";
   const groupBy = searchParams.get("groupBy");
 
+  // 品牌列表模式（去重 brand + logo_url）
+  if (groupBy === "brandList") {
+    const items = await prisma.globalFilament.findMany({
+      select: { brand: true, logo_url: true },
+    });
+    const map = new Map<string, string | null>();
+    for (const item of items) {
+      if (!map.has(item.brand)) {
+        map.set(item.brand, item.logo_url);
+      } else if (!map.get(item.brand) && item.logo_url) {
+        map.set(item.brand, item.logo_url);
+      }
+    }
+    const result = Array.from(map.entries()).map(([brand, logo_url]) => ({ brand, logo_url }));
+    result.sort((a, b) => a.brand.localeCompare(b.brand));
+    return NextResponse.json(result);
+  }
+
   // 品牌分组模式
   if (groupBy === "brand") {
     const items = await prisma.globalFilament.findMany({

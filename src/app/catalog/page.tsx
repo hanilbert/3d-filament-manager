@@ -118,10 +118,7 @@ function BrandTable({ brands }: { brands: BrandGroup[] }) {
     );
   }
 
-  // 收集所有出现过的材料大类
-  const allMaterialTypes = new Set<string>();
-  brands.forEach((b) => b.materialTypes.forEach((mt) => allMaterialTypes.add(mt)));
-  const materialTypeCols = Array.from(allMaterialTypes).sort();
+  const materialTypeCols = ["PLA", "ABS", "ASA", "TPU"];
 
   return (
     <div className="border border-border rounded-lg overflow-x-auto">
