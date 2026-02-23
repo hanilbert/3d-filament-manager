@@ -37,7 +37,7 @@ export async function PATCH(
     const body = await request.json();
 
     const allowedFields = [
-      "brand", "material", "color_name", "color_hex", "nozzle_temp", "bed_temp", "print_speed", "logo_url",
+      "brand", "material", "material_type", "color_name", "color_hex", "nozzle_temp", "bed_temp", "print_speed", "logo_url",
       "density", "diameter", "nominal_weight", "softening_temp", "chamber_temp",
       "ironing_flow", "ironing_speed", "shrinkage", "empty_spool_weight", "pressure_advance",
       "fan_min", "fan_max",
