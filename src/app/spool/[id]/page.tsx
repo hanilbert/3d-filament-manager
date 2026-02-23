@@ -22,9 +22,9 @@ interface SpoolDetail {
     material: string;
     color_name: string;
     color_hex?: string | null;
-    nozzle_temp: string;
-    bed_temp: string;
-    print_speed: string;
+    nozzle_temp?: string | null;
+    bed_temp?: string | null;
+    print_speed?: string | null;
     logo_url?: string | null;
   };
   location: { id: string; name: string } | null;
@@ -107,7 +107,7 @@ export default function SpoolDetailPage() {
   const { globalFilament: gf, location } = spool;
 
   return (
-    <div className="max-w-lg mx-auto">
+    <div className="mx-auto max-w-lg md:max-w-4xl">
       {/* 顶栏 */}
       <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
         <button onClick={() => router.back()} className="text-muted-foreground">
@@ -169,18 +169,20 @@ export default function SpoolDetailPage() {
         </div>
 
         {/* 打印参数 */}
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { label: "喷嘴温度", value: gf.nozzle_temp },
-            { label: "热床温度", value: gf.bed_temp },
-            { label: "打印速度", value: gf.print_speed },
-          ].map(({ label, value }) => (
-            <div key={label} className="p-3 bg-muted/50 rounded-lg text-center">
-              <p className="text-xs text-muted-foreground">{label}</p>
-              <p className="text-sm font-medium mt-0.5">{value}</p>
-            </div>
-          ))}
-        </div>
+        {(gf.nozzle_temp || gf.bed_temp || gf.print_speed) && (
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: "喷嘴温度", value: gf.nozzle_temp },
+              { label: "热床温度", value: gf.bed_temp },
+              { label: "打印速度", value: gf.print_speed },
+            ].filter(({ value }) => value).map(({ label, value }) => (
+              <div key={label} className="p-3 bg-muted/50 rounded-lg text-center">
+                <p className="text-xs text-muted-foreground">{label}</p>
+                <p className="text-sm font-medium mt-0.5">{value}</p>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* 当前位置 */}
         <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">

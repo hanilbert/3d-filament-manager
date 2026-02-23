@@ -42,6 +42,9 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [showPrintParams, setShowPrintParams] = useState(
+    !!(initialValues?.nozzle_temp || initialValues?.bed_temp || initialValues?.print_speed)
+  );
 
   function update(field: keyof FormValues, value: string) {
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -79,6 +82,9 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
         ...values,
         color_hex: values.color_hex || undefined,
         logo_url: values.logo_url || undefined,
+        nozzle_temp: values.nozzle_temp || undefined,
+        bed_temp: values.bed_temp || undefined,
+        print_speed: values.print_speed || undefined,
       };
 
       if (catalogId) {
@@ -137,19 +143,41 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="nozzle_temp">喷嘴温度 *</Label>
-          <Input id="nozzle_temp" value={values.nozzle_temp} onChange={(e) => update("nozzle_temp", e.target.value)} placeholder="如：190-230°C" required className="h-12" />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="bed_temp">热床温度 *</Label>
-          <Input id="bed_temp" value={values.bed_temp} onChange={(e) => update("bed_temp", e.target.value)} placeholder="如：35-45°C" required className="h-12" />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="print_speed">打印速度 *</Label>
-          <Input id="print_speed" value={values.print_speed} onChange={(e) => update("print_speed", e.target.value)} placeholder="如：≤300 mm/s" required className="h-12" />
-        </div>
+      {/* 打印参数（选填）- 可折叠 */}
+      <div className="border border-border rounded-lg overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowPrintParams(!showPrintParams)}
+          className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-muted-foreground hover:bg-muted/50 transition-colors"
+        >
+          <span>打印参数（选填）</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className={`w-4 h-4 transition-transform ${showPrintParams ? "rotate-180" : ""}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {showPrintParams && (
+          <div className="px-4 pb-4 space-y-4 border-t border-border pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="nozzle_temp">喷嘴温度</Label>
+              <Input id="nozzle_temp" value={values.nozzle_temp} onChange={(e) => update("nozzle_temp", e.target.value)} placeholder="如：190-230°C" className="h-12" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bed_temp">热床温度</Label>
+              <Input id="bed_temp" value={values.bed_temp} onChange={(e) => update("bed_temp", e.target.value)} placeholder="如：35-45°C" className="h-12" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="print_speed">打印速度</Label>
+              <Input id="print_speed" value={values.print_speed} onChange={(e) => update("print_speed", e.target.value)} placeholder="如：≤300 mm/s" className="h-12" />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Logo 管理 */}
@@ -187,7 +215,7 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <Button type="submit" className="w-full h-14 text-base" disabled={saving || uploading}>
-        {saving ? "保存中..." : catalogId ? "保存修改" : "创建字典"}
+        {saving ? "保存中..." : catalogId ? "保存修改" : "创建耗材"}
       </Button>
     </form>
   );

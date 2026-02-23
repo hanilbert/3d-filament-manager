@@ -14,6 +14,8 @@ export default async function LocationPrintPage({ params }: Props) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
   const qrUrl = `${baseUrl}/location/${id}`;
 
+  const isAms = location.type === "ams_slot";
+
   return (
     <>
       <style>{`
@@ -37,24 +39,55 @@ export default async function LocationPrintPage({ params }: Props) {
           overflow: "hidden",
         }}
       >
-        {/* 左侧：位置名称 */}
+        {/* 左侧：位置信息 */}
         <div
           style={{
             flex: 1,
-            padding: "3mm",
+            padding: "2mm 3mm",
             overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            gap: "1mm",
           }}
         >
-          <div
-            style={{
-              fontSize: "9pt",
-              fontWeight: "bold",
-              lineHeight: 1.3,
-              wordBreak: "break-all",
-            }}
-          >
-            {location.name}
-          </div>
+          {isAms ? (
+            <>
+              <div style={{ fontSize: "6pt", fontWeight: "bold", color: "#666", letterSpacing: "0.5px" }}>
+                AMS
+              </div>
+              <div style={{ fontSize: "7pt", lineHeight: 1.2 }}>
+                {location.printer_name}
+              </div>
+              <div style={{ fontSize: "10pt", fontWeight: "bold", lineHeight: 1.2 }}>
+                Slot {location.ams_slot}
+              </div>
+              <div style={{ fontSize: "6pt", color: "#999" }}>
+                Unit {location.ams_unit}
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: "6pt", color: "#999" }}>
+                {location.type === "shelf" ? "📦" : location.type === "printer" ? "🖨️" : location.type === "dryer" ? "💨" : "📍"}
+              </div>
+              <div
+                style={{
+                  fontSize: "9pt",
+                  fontWeight: "bold",
+                  lineHeight: 1.3,
+                  wordBreak: "break-all",
+                }}
+              >
+                {location.name}
+              </div>
+              {location.short_code && (
+                <div style={{ fontSize: "6pt", color: "#999" }}>
+                  #{location.short_code}
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* 右侧：QR 码 */}

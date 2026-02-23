@@ -59,7 +59,7 @@ export async function DELETE(
 
   if (spoolCount > 0) {
     return NextResponse.json(
-      { error: `该字典关联了 ${spoolCount} 卷耗材，无法删除` },
+      { error: `该耗材关联了 ${spoolCount} 卷料卷，无法删除` },
       { status: 400 }
     );
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,8 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const from = searchParams.get("from") || "/spools";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,8 +42,7 @@ export default function LoginPage() {
       const days = 7;
       document.cookie = `spool_tracker_token=${token}; path=/; max-age=${days * 24 * 3600}; SameSite=Lax`;
 
-      router.push("/spools");
-      router.refresh();
+      router.push(from);
     } catch {
       setError("网络错误，请重试");
     } finally {

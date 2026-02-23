@@ -23,7 +23,7 @@ interface Spool {
 function SpoolCard({ spool }: { spool: Spool }) {
   return (
     <Link href={`/spool/${spool.id}`}>
-      <div className="flex items-center gap-3 p-4 bg-card border border-border rounded-lg active:bg-muted transition-colors">
+      <div className="flex items-center gap-3 p-4 bg-card border border-border rounded-lg active:bg-muted transition-colors hover:bg-muted/50">
         <ColorSwatch colorHex={spool.globalFilament.color_hex} size="lg" />
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm truncate">
@@ -69,7 +69,7 @@ export default function SpoolsPage() {
   }, []);
 
   return (
-    <div className="max-w-lg mx-auto">
+    <div className="mx-auto max-w-lg md:max-w-4xl">
       <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-semibold">我的料卷</h1>
         <Link
@@ -91,7 +91,7 @@ export default function SpoolsPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="active" className="mt-4 space-y-2">
+          <TabsContent value="active" className="mt-4">
             {loading ? (
               <p className="text-center text-muted-foreground py-8">加载中...</p>
             ) : activeSpools.length === 0 ? (
@@ -102,17 +102,21 @@ export default function SpoolsPage() {
                 </Link>
               </p>
             ) : (
-              activeSpools.map((s) => <SpoolCard key={s.id} spool={s} />)
+              <div className="space-y-2 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-3 md:space-y-0">
+                {activeSpools.map((s) => <SpoolCard key={s.id} spool={s} />)}
+              </div>
             )}
           </TabsContent>
 
-          <TabsContent value="empty" className="mt-4 space-y-2">
+          <TabsContent value="empty" className="mt-4">
             {loading ? (
               <p className="text-center text-muted-foreground py-8">加载中...</p>
             ) : emptySpools.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">暂无已归档的料卷</p>
             ) : (
-              emptySpools.map((s) => <SpoolCard key={s.id} spool={s} />)
+              <div className="space-y-2 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-3 md:space-y-0">
+                {emptySpools.map((s) => <SpoolCard key={s.id} spool={s} />)}
+              </div>
             )}
           </TabsContent>
         </Tabs>

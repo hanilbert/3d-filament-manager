@@ -26,7 +26,7 @@ const tabs = [
   },
   {
     href: "/catalog",
-    label: "字典",
+    label: "品牌与材料",
     icon: (active: boolean) => (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -70,6 +70,8 @@ const tabs = [
     ),
   },
 ];
+
+export { tabs };
 
 export function BottomNav() {
   const pathname = usePathname();

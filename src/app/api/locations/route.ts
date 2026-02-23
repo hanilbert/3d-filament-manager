@@ -23,13 +23,41 @@ export async function POST(request: NextRequest) {
   if (authError) return authError;
 
   try {
-    const { name } = await request.json();
+    const body = await request.json();
+    const { name, type = "custom", short_code, is_default, printer_name, ams_unit, ams_slot } = body;
+
     if (!name || !name.trim()) {
       return NextResponse.json({ error: "位置名称不能为空" }, { status: 400 });
     }
 
+    // AMS Slot 类型校验
+    if (type === "ams_slot") {
+      if (!printer_name || !ams_unit || !ams_slot) {
+        return NextResponse.json(
+          { error: "AMS 插槽类型需要填写打印机名称、AMS 单元和插槽号" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // 如果设为默认，先取消其他默认
+    if (is_default) {
+      await prisma.location.updateMany({
+        where: { is_default: true },
+        data: { is_default: false },
+      });
+    }
+
     const location = await prisma.location.create({
-      data: { name: name.trim() },
+      data: {
+        name: name.trim(),
+        type,
+        short_code: short_code?.trim() || undefined,
+        is_default: is_default ?? false,
+        printer_name: printer_name?.trim() || undefined,
+        ams_unit: ams_unit?.trim() || undefined,
+        ams_slot: ams_slot?.trim() || undefined,
+      },
     });
 
     return NextResponse.json(location, { status: 201 });

@@ -13,9 +13,9 @@ model GlobalFilament {
   material    String
   color_name  String
   color_hex   String?
-  nozzle_temp String
-  bed_temp    String
-  print_speed String
+  nozzle_temp String?
+  bed_temp    String?
+  print_speed String?
   logo_url    String?
   created_at  DateTime @default(now())
 
@@ -23,8 +23,19 @@ model GlobalFilament {
 }
 
 model Location {
-  id   String @id @default(uuid())
-  name String
+  id           String   @id @default(uuid())
+  name         String
+  short_code   String?  @unique
+  type         String   @default("custom")
+  is_default   Boolean  @default(false)
+
+  // AMS Slot 专用字段
+  printer_name String?
+  ams_unit     String?
+  ams_slot     String?
+
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
 
   spools Spool[]
 }

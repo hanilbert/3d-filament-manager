@@ -15,9 +15,9 @@ interface CatalogDetail {
   material: string;
   color_name: string;
   color_hex?: string | null;
-  nozzle_temp: string;
-  bed_temp: string;
-  print_speed: string;
+  nozzle_temp?: string | null;
+  bed_temp?: string | null;
+  print_speed?: string | null;
   logo_url?: string | null;
   spools: Array<{
     id: string;
@@ -74,14 +74,14 @@ export default function CatalogDetailPage() {
   const canDelete = item.spools.length === 0;
 
   return (
-    <div className="max-w-lg mx-auto">
+    <div className="mx-auto max-w-lg md:max-w-4xl">
       <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
         <button onClick={() => router.back()} className="text-muted-foreground">
           <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <h1 className="text-lg font-semibold flex-1">字典详情</h1>
+        <h1 className="text-lg font-semibold flex-1">耗材详情</h1>
         <Link href={`/catalog/${id}/edit`} className="text-sm text-primary font-medium">编辑</Link>
       </div>
 
@@ -114,18 +114,20 @@ export default function CatalogDetailPage() {
         </div>
 
         {/* 打印参数 */}
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { label: "喷嘴温度", value: item.nozzle_temp },
-            { label: "热床温度", value: item.bed_temp },
-            { label: "打印速度", value: item.print_speed },
-          ].map(({ label, value }) => (
-            <div key={label} className="p-3 bg-muted/50 rounded-lg text-center">
-              <p className="text-xs text-muted-foreground">{label}</p>
-              <p className="text-sm font-medium mt-0.5">{value}</p>
-            </div>
-          ))}
-        </div>
+        {(item.nozzle_temp || item.bed_temp || item.print_speed) && (
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: "喷嘴温度", value: item.nozzle_temp },
+              { label: "热床温度", value: item.bed_temp },
+              { label: "打印速度", value: item.print_speed },
+            ].filter(({ value }) => value).map(({ label, value }) => (
+              <div key={label} className="p-3 bg-muted/50 rounded-lg text-center">
+                <p className="text-xs text-muted-foreground">{label}</p>
+                <p className="text-sm font-medium mt-0.5">{value}</p>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* 加入料卷按钮 */}
         <Button className="w-full h-14 text-base" onClick={handleAddSpool} disabled={adding}>
@@ -154,15 +156,15 @@ export default function CatalogDetailPage() {
         {/* 删除按钮 */}
         {canDelete && (
           <Button variant="destructive" className="w-full h-12" onClick={() => setShowDeleteConfirm(true)}>
-            删除字典
+            删除耗材
           </Button>
         )}
       </div>
 
       <ConfirmDialog
         open={showDeleteConfirm}
-        title="删除字典"
-        description="确认删除此耗材字典？此操作不可撤销。"
+        title="删除耗材"
+        description="确认删除此耗材？此操作不可撤销。"
         confirmLabel="确认删除"
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteConfirm(false)}

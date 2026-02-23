@@ -1,0 +1,92 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { ColorSwatch } from "@/components/ColorSwatch";
+import { apiFetch } from "@/lib/fetch";
+
+interface CatalogItem {
+  id: string;
+  brand: string;
+  material: string;
+  color_name: string;
+  color_hex?: string | null;
+  logo_url?: string | null;
+  _count: { spools: number };
+}
+
+export default function MaterialDetailPage() {
+  const { material: encodedMaterial } = useParams<{ material: string }>();
+  const material = decodeURIComponent(encodedMaterial);
+  const router = useRouter();
+  const [items, setItems] = useState<CatalogItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const data = await apiFetch<CatalogItem[]>(
+          `/api/catalog?material=${encodeURIComponent(material)}`
+        );
+        setItems(data);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [material]);
+
+  // 按品牌分组
+  const grouped = items.reduce<Record<string, CatalogItem[]>>((acc, item) => {
+    if (!acc[item.brand]) acc[item.brand] = [];
+    acc[item.brand].push(item);
+    return acc;
+  }, {});
+
+  return (
+    <div className="mx-auto max-w-lg md:max-w-4xl">
+      <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
+        <button onClick={() => router.back()} className="text-muted-foreground">
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <h1 className="text-lg font-semibold">{material}</h1>
+      </div>
+
+      <div className="p-4 space-y-4">
+        {loading ? (
+          <p className="text-center text-muted-foreground py-8">加载中...</p>
+        ) : items.length === 0 ? (
+          <p className="text-center text-muted-foreground py-8">该材料暂无耗材</p>
+        ) : (
+          Object.entries(grouped).map(([brand, brandItems]) => (
+            <div key={brand}>
+              <p className="text-xs font-medium text-muted-foreground mb-2">
+                {brand}（{brandItems.length} 种）
+              </p>
+              <div className="space-y-2 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-3 md:space-y-0">
+                {brandItems.map((item) => (
+                  <Link key={item.id} href={`/catalog/${item.id}`}>
+                    <div className="flex items-center gap-3 p-4 bg-card border border-border rounded-lg active:bg-muted transition-colors hover:bg-muted/50">
+                      <ColorSwatch colorHex={item.color_hex} size="lg" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">
+                          {item.color_name}
+                        </p>
+                      </div>
+                      <span className="text-xs text-muted-foreground flex-shrink-0">
+                        {item._count.spools} 卷
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}

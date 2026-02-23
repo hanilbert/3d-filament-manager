@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth";
 
 const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/logos"];
 
@@ -16,9 +15,15 @@ export function proxy(request: NextRequest) {
   }
 
   // 从 Cookie 中读取 token（页面路由鉴权）
+  // 注意：仅检查 Cookie 是否存在，不在 Edge Runtime 中做内存校验。
+  // 真正的 token 有效性验证由 API 路由层（Node.js Runtime）负责。
   const token = request.cookies.get("spool_tracker_token")?.value;
 
-  if (!token || !verifyToken(token)) {
+  if (!token) {
+    // API 路由返回 401 JSON，页面路由跳转登录页
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("from", pathname);
     return NextResponse.redirect(loginUrl);

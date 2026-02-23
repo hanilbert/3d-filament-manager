@@ -44,14 +44,43 @@ export async function PATCH(
 
   const { id } = await params;
   try {
-    const { name } = await request.json();
-    if (!name || !name.trim()) {
+    const body = await request.json();
+    const { name, type, short_code, is_default, printer_name, ams_unit, ams_slot } = body;
+
+    if (name !== undefined && (!name || !name.trim())) {
       return NextResponse.json({ error: "位置名称不能为空" }, { status: 400 });
     }
 
+    // AMS Slot 类型校验
+    if (type === "ams_slot") {
+      if (!printer_name || !ams_unit || !ams_slot) {
+        return NextResponse.json(
+          { error: "AMS 插槽类型需要填写打印机名称、AMS 单元和插槽号" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // 如果设为默认，先取消其他默认
+    if (is_default) {
+      await prisma.location.updateMany({
+        where: { is_default: true, id: { not: id } },
+        data: { is_default: false },
+      });
+    }
+
+    const data: Record<string, unknown> = {};
+    if (name !== undefined) data.name = name.trim();
+    if (type !== undefined) data.type = type;
+    if (short_code !== undefined) data.short_code = short_code?.trim() || null;
+    if (is_default !== undefined) data.is_default = is_default;
+    if (printer_name !== undefined) data.printer_name = printer_name?.trim() || null;
+    if (ams_unit !== undefined) data.ams_unit = ams_unit?.trim() || null;
+    if (ams_slot !== undefined) data.ams_slot = ams_slot?.trim() || null;
+
     const location = await prisma.location.update({
       where: { id },
-      data: { name: name.trim() },
+      data,
     });
 
     return NextResponse.json(location);
@@ -68,12 +97,19 @@ export async function DELETE(
   if (authError) return authError;
 
   const { id } = await params;
-  // 解绑该位置下所有料卷，设 location_id 为 null
-  await prisma.spool.updateMany({
-    where: { location_id: id },
-    data: { location_id: null },
-  });
+  try {
+    await prisma.spool.updateMany({
+      where: { location_id: id },
+      data: { location_id: null },
+    });
 
-  await prisma.location.delete({ where: { id } });
-  return NextResponse.json({ success: true });
+    await prisma.location.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch (e: unknown) {
+    const code = (e as { code?: string })?.code;
+    if (code === "P2025") {
+      return NextResponse.json({ error: "未找到" }, { status: 404 });
+    }
+    return NextResponse.json({ error: "删除失败" }, { status: 500 });
+  }
 }
