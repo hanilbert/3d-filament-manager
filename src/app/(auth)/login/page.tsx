@@ -7,13 +7,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+/** Only allow relative paths starting with / to prevent open redirect (S-M1) */
+function sanitizeRedirect(raw: string): string {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/spools";
+  return raw;
+}
+
 export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const from = searchParams.get("from") || "/spools";
+  const from = sanitizeRedirect(searchParams.get("from") || "/spools");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -27,6 +33,11 @@ export default function LoginPage() {
         body: JSON.stringify({ password }),
       });
 
+      if (res.status === 429) {
+        setError("登录尝试过于频繁，请稍后再试");
+        return;
+      }
+
       if (!res.ok) {
         setError("密码错误，请重试");
         return;
@@ -34,14 +45,10 @@ export default function LoginPage() {
 
       const { token, expiresAt } = await res.json();
 
-      // 存入 localStorage 供 API 请求使用
+      // Cookie is now set server-side as HttpOnly (S-H2)
+      // Keep localStorage as fallback for Bearer header in API requests
       localStorage.setItem("spool_tracker_token", token);
       localStorage.setItem("spool_tracker_expires", String(expiresAt));
-
-      // 存入 Cookie 供中间件使用（7 天）
-      const days = 7;
-      const secure = location.protocol === 'https:' ? '; Secure' : '';
-      document.cookie = `spool_tracker_token=${token}; path=/; max-age=${days * 24 * 3600}; SameSite=Lax${secure}`;
 
       router.push(from);
     } catch {

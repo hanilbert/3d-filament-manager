@@ -24,17 +24,27 @@ function fromBase64url(str: string): Uint8Array {
   return bytes;
 }
 
-async function hmacSign(data: string, secret: string): Promise<string> {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
+async function getHmacKey(secret: string): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
     "raw",
-    enc.encode(secret),
+    new TextEncoder().encode(secret),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["sign", "verify"]
   );
-  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(data));
+}
+
+async function hmacSign(data: string, secret: string): Promise<string> {
+  const key = await getHmacKey(secret);
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data));
   return toBase64url(sig);
+}
+
+/** Constant-time HMAC verification using Web Crypto verify (Edge-safe) */
+async function hmacVerify(data: string, signature: string, secret: string): Promise<boolean> {
+  const key = await getHmacKey(secret);
+  const sigBytes = fromBase64url(signature);
+  return crypto.subtle.verify("HMAC", key, sigBytes, new TextEncoder().encode(data));
 }
 
 // --- Sync helpers for Node.js runtime (API routes, generateToken) ---
@@ -63,8 +73,9 @@ export async function verifyToken(token: string): Promise<boolean> {
   if (parts.length !== 2) return false;
   const [payloadB64, sig] = parts;
 
-  const expectedSig = await hmacSign(payloadB64, getSecret());
-  if (sig !== expectedSig) return false;
+  // Constant-time signature verification via Web Crypto
+  const valid = await hmacVerify(payloadB64, sig, getSecret());
+  if (!valid) return false;
 
   try {
     const json = new TextDecoder().decode(fromBase64url(payloadB64));

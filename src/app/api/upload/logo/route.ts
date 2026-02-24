@@ -4,13 +4,15 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { v4 as uuidv4 } from "uuid";
 
+// SVG removed — stored XSS risk (S-C3)
 const ALLOWED_TYPES: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
-  "image/svg+xml": "svg",
 };
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+
+let logosDirReady = false;
 
 export async function POST(request: NextRequest) {
   const authError = await requireAuth(request);
@@ -27,7 +29,7 @@ export async function POST(request: NextRequest) {
     const ext = ALLOWED_TYPES[file.type];
     if (!ext) {
       return NextResponse.json(
-        { error: "仅支持 jpg、png、webp、svg 格式" },
+        { error: "仅支持 jpg、png、webp 格式" },
         { status: 400 }
       );
     }
@@ -40,7 +42,10 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes);
 
     const logosDir = join(process.cwd(), "data", "logos");
-    await mkdir(logosDir, { recursive: true });
+    if (!logosDirReady) {
+      await mkdir(logosDir, { recursive: true });
+      logosDirReady = true;
+    }
 
     const filename = `${uuidv4()}.${ext}`;
     await writeFile(join(logosDir, filename), buffer);

@@ -6,16 +6,20 @@ export async function GET(request: NextRequest) {
   const authError = await requireAuth(request);
   if (authError) return authError;
 
-  const locations = await prisma.location.findMany({
-    include: {
-      _count: {
-        select: { spools: { where: { status: "ACTIVE" } } },
+  try {
+    const locations = await prisma.location.findMany({
+      include: {
+        _count: {
+          select: { spools: { where: { status: "ACTIVE" } } },
+        },
       },
-    },
-    orderBy: { name: "asc" },
-  });
+      orderBy: { name: "asc" },
+    });
 
-  return NextResponse.json(locations);
+    return NextResponse.json(locations);
+  } catch {
+    return NextResponse.json({ error: "获取位置列表失败" }, { status: 500 });
+  }
 }
 
 export async function POST(request: NextRequest) {

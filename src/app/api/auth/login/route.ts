@@ -2,7 +2,50 @@ import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
 import { generateToken, TOKEN_TTL } from "@/lib/auth";
 
+// --- Rate limiting (in-memory, per-process) ---
+const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const MAX_ATTEMPTS = 10;
+const attempts = new Map<string, { count: number; resetAt: number }>();
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = attempts.get(ip);
+  if (!entry || now > entry.resetAt) {
+    attempts.set(ip, { count: 1, resetAt: now + LOGIN_WINDOW_MS });
+    return false;
+  }
+  entry.count += 1;
+  return entry.count > MAX_ATTEMPTS;
+}
+
+function getClientIp(request: NextRequest): string {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "unknown"
+  );
+}
+
+// Clean up stale entries periodically (every 5 min)
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of attempts) {
+    if (now > entry.resetAt) attempts.delete(ip);
+  }
+}, 5 * 60 * 1000).unref?.();
+
+// --- Handler ---
+
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request);
+
+  if (isRateLimited(ip)) {
+    return NextResponse.json(
+      { error: "登录尝试过于频繁，请 15 分钟后再试" },
+      { status: 429, headers: { "Retry-After": "900" } }
+    );
+  }
+
   try {
     const { password } = await request.json();
     const expected = process.env.APP_PASSWORD ?? "";
@@ -17,8 +60,16 @@ export async function POST(request: NextRequest) {
 
     const token = generateToken();
     const expiresAt = Date.now() + TOKEN_TTL;
+    const maxAge = Math.floor(TOKEN_TTL / 1000);
 
-    return NextResponse.json({ token, expiresAt });
+    // Set HttpOnly cookie server-side (S-H2)
+    const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+    const cookie = `spool_tracker_token=${token}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Lax${secure}`;
+
+    return NextResponse.json(
+      { token, expiresAt },
+      { headers: { "Set-Cookie": cookie } }
+    );
   } catch {
     return NextResponse.json({ error: "请求格式错误" }, { status: 400 });
   }

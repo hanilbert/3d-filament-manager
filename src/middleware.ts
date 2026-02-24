@@ -24,7 +24,10 @@ export async function middleware(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("from", pathname);
+    // Only pass relative paths to prevent open redirect (S-M1)
+    if (pathname.startsWith("/") && !pathname.startsWith("//")) {
+      loginUrl.searchParams.set("from", pathname);
+    }
     return NextResponse.redirect(loginUrl);
   }
 

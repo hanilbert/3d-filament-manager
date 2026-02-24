@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -154,6 +155,17 @@ export function LocationForm({ initialValues, locationId }: LocationFormProps) {
             />
           </div>
         </div>
+      )}
+
+      {/* 批量创建 AMS 入口（仅新建时显示） */}
+      {values.type === "ams_slot" && !locationId && (
+        <Link
+          href="/locations/bulk-ams"
+          className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+        >
+          <span>需要同时创建多个插槽？</span>
+          <span className="text-primary font-medium">批量添加 →</span>
+        </Link>
       )}
 
       {/* 默认位置 */}

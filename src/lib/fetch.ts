@@ -3,14 +3,22 @@ export function getToken(): string | null {
   return localStorage.getItem("spool_tracker_token");
 }
 
+function getCookieToken(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|;\s*)spool_tracker_token=([^;]*)/);
+  return match?.[1] ?? null;
+}
+
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = getToken();
+  // Prefer cookie (HttpOnly set by server), fall back to localStorage for compat
+  const token = getCookieToken() || getToken();
   const isFormData = options.body instanceof FormData;
   const res = await fetch(path, {
     ...options,
+    credentials: "same-origin", // ensure cookies are sent
     headers: {
       // Don't set Content-Type for FormData — browser sets it with boundary
       ...(!isFormData ? { "Content-Type": "application/json" } : {}),
@@ -23,7 +31,8 @@ export async function apiFetch<T>(
     // Token 过期或无效，清除并跳转登录
     if (typeof window !== "undefined") {
       localStorage.removeItem("spool_tracker_token");
-      document.cookie = 'spool_tracker_token=; path=/; max-age=0';
+      localStorage.removeItem("spool_tracker_expires");
+      document.cookie = "spool_tracker_token=; path=/; max-age=0";
       window.location.href = "/login";
     }
     throw new Error("登录已过期，请重新登录");

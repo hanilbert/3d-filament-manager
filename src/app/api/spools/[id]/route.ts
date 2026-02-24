@@ -32,10 +32,18 @@ export async function PATCH(
   const { id } = await params;
   try {
     const body = await request.json();
-    const allowedFields = ["location_id", "status", "metadata"];
+    const allowedFields = ["location_id", "status"];
     const data: Record<string, unknown> = {};
     for (const key of allowedFields) {
       if (key in body) data[key] = body[key];
+    }
+    // Validate metadata size (S-M4)
+    if ("metadata" in body) {
+      const meta = typeof body.metadata === "string" ? body.metadata : JSON.stringify(body.metadata ?? "");
+      if (meta.length > 10000) {
+        return NextResponse.json({ error: "metadata 不能超过 10KB" }, { status: 400 });
+      }
+      data.metadata = meta;
     }
 
     const spool = await prisma.spool.update({

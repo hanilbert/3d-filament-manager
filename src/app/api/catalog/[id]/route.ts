@@ -60,17 +60,23 @@ export async function DELETE(
   if (authError) return authError;
 
   const { id } = await params;
-  const spoolCount = await prisma.spool.count({
-    where: { global_filament_id: id },
-  });
 
-  if (spoolCount > 0) {
-    return NextResponse.json(
-      { error: `该耗材关联了 ${spoolCount} 卷料卷，无法删除` },
-      { status: 400 }
-    );
+  try {
+    await prisma.globalFilament.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch (e: unknown) {
+    const code = (e as { code?: string })?.code;
+    // P2003 = FK constraint (spools reference this filament)
+    if (code === "P2003") {
+      return NextResponse.json(
+        { error: "该耗材关联了料卷，无法删除" },
+        { status: 400 }
+      );
+    }
+    // P2025 = record not found
+    if (code === "P2025") {
+      return NextResponse.json({ error: "未找到" }, { status: 404 });
+    }
+    return NextResponse.json({ error: "删除失败" }, { status: 500 });
   }
-
-  await prisma.globalFilament.delete({ where: { id } });
-  return NextResponse.json({ success: true });
 }

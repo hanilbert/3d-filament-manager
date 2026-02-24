@@ -27,12 +27,19 @@ export async function GET(
   try {
     const filePath = join(process.cwd(), "data", "logos", safe);
     const buffer = await readFile(filePath);
-    return new NextResponse(buffer, {
-      headers: {
-        "Content-Type": contentType,
-        "Cache-Control": "public, max-age=31536000, immutable",
-      },
-    });
+
+    const headers: Record<string, string> = {
+      "Content-Type": contentType,
+      "Cache-Control": "public, max-age=31536000, immutable",
+    };
+
+    // Force SVG download to prevent XSS (S-C3 mitigation for legacy uploads)
+    if (ext === "svg") {
+      headers["Content-Disposition"] = `attachment; filename="${safe}"`;
+      headers["X-Content-Type-Options"] = "nosniff";
+    }
+
+    return new NextResponse(buffer, { headers });
   } catch {
     return NextResponse.json({ error: "文件不存在" }, { status: 404 });
   }

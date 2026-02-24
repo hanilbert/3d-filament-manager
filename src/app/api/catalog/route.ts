@@ -1,7 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
 import { FILAMENT_OPTIONAL_FIELDS } from "@/lib/types";
+
+const FLAT_SORT_FIELDS = [
+  "brand",
+  "material",
+  "material_type",
+  "color_name",
+  "color_hex",
+  "created_at",
+] as const;
+
+type FlatSortField = (typeof FLAT_SORT_FIELDS)[number];
+
+function parseFlatSortField(value: string | null): FlatSortField {
+  if (!value) return "created_at";
+  return FLAT_SORT_FIELDS.includes(value as FlatSortField)
+    ? (value as FlatSortField)
+    : "created_at";
+}
+
+function parseSortOrder(value: string | null): Prisma.SortOrder {
+  return value === "asc" ? "asc" : "desc";
+}
+
+function getFlatListOrderBy(
+  field: FlatSortField,
+  order: Prisma.SortOrder
+): Prisma.GlobalFilamentOrderByWithRelationInput {
+  switch (field) {
+    case "brand":
+      return { brand: order };
+    case "material":
+      return { material: order };
+    case "material_type":
+      return { material_type: order };
+    case "color_name":
+      return { color_name: order };
+    case "color_hex":
+      return { color_hex: order };
+    case "created_at":
+    default:
+      return { created_at: order };
+  }
+}
 
 export async function GET(request: NextRequest) {
   const authError = await requireAuth(request);
@@ -13,6 +57,8 @@ export async function GET(request: NextRequest) {
   const material = searchParams.get("material") || "";
   const materialType = searchParams.get("materialType") || "";
   const groupBy = searchParams.get("groupBy");
+  const sortBy = parseFlatSortField(searchParams.get("sortBy"));
+  const sortOrder = parseSortOrder(searchParams.get("sortOrder"));
 
   // 品牌列表模式（去重 brand + logo_url）
   if (groupBy === "brandList") {
@@ -209,7 +255,7 @@ export async function GET(request: NextRequest) {
     include: {
       _count: { select: { spools: true } },
     },
-    orderBy: { created_at: "desc" },
+    orderBy: getFlatListOrderBy(sortBy, sortOrder),
   });
 
   return NextResponse.json(items);

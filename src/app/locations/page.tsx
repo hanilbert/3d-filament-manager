@@ -16,12 +16,15 @@ interface Location {
 export default function LocationsPage() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
       try {
         const data = await apiFetch<Location[]>("/api/locations");
         setLocations(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "加载失败");
       } finally {
         setLoading(false);
       }
@@ -49,6 +52,8 @@ export default function LocationsPage() {
       <div className="p-4 space-y-4">
         {loading ? (
           <p className="text-center text-muted-foreground py-8">加载中...</p>
+        ) : error ? (
+          <p className="text-center text-destructive py-8">{error}</p>
         ) : locations.length === 0 ? (
           <p className="text-center text-muted-foreground py-8">
             暂无位置，
