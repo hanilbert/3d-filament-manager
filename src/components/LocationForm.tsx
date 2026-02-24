@@ -47,13 +47,14 @@ export function LocationForm({ initialValues, locationId }: LocationFormProps) {
     setSaving(true);
 
     try {
+      const isAms = values.type === "ams_slot";
       const body = {
-        name: values.name,
+        name: isAms ? values.printer_name : values.name,
         type: values.type,
         is_default: values.is_default,
-        printer_name: values.type === "ams_slot" ? values.printer_name : undefined,
-        ams_unit: values.type === "ams_slot" ? values.ams_unit : undefined,
-        ams_slot: values.type === "ams_slot" ? values.ams_slot : undefined,
+        printer_name: isAms ? values.printer_name : undefined,
+        ams_unit: isAms ? values.ams_unit : undefined,
+        ams_slot: isAms ? values.ams_slot : undefined,
       };
 
       if (locationId) {
@@ -100,18 +101,60 @@ export function LocationForm({ initialValues, locationId }: LocationFormProps) {
         </div>
       </div>
 
-      {/* 名称 */}
-      <div className="space-y-2">
-        <Label htmlFor="name">名称 *</Label>
-        <Input
-          id="name"
-          value={values.name}
-          onChange={(e) => update("name", e.target.value)}
-          placeholder="如：防潮箱 A"
-          required
-          className="h-12"
-        />
-      </div>
+      {/* 名称 / 打印机名称（AMS 时合并为一个字段） */}
+      {values.type === "ams_slot" ? (
+        <div className="space-y-2">
+          <Label htmlFor="printer_name">打印机名称 *</Label>
+          <Input
+            id="printer_name"
+            value={values.printer_name}
+            onChange={(e) => update("printer_name", e.target.value)}
+            placeholder="如：X1C-01"
+            required
+            className="h-12"
+          />
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <Label htmlFor="name">名称 *</Label>
+          <Input
+            id="name"
+            value={values.name}
+            onChange={(e) => update("name", e.target.value)}
+            placeholder="如：防潮箱 A"
+            required
+            className="h-12"
+          />
+        </div>
+      )}
+
+      {/* AMS 单元 / 插槽号（与名称同级） */}
+      {values.type === "ams_slot" && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label htmlFor="ams_unit">AMS 单元 *</Label>
+            <Input
+              id="ams_unit"
+              value={values.ams_unit}
+              onChange={(e) => update("ams_unit", e.target.value)}
+              placeholder="如：1"
+              required
+              className="h-12"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="ams_slot">插槽号 *</Label>
+            <Input
+              id="ams_slot"
+              value={values.ams_slot}
+              onChange={(e) => update("ams_slot", e.target.value)}
+              placeholder="如：1"
+              required
+              className="h-12"
+            />
+          </div>
+        </div>
+      )}
 
       {/* 默认位置 */}
       <div className="flex items-center justify-between p-3 border border-border rounded-lg">
@@ -135,48 +178,6 @@ export function LocationForm({ initialValues, locationId }: LocationFormProps) {
           />
         </button>
       </div>
-
-      {/* AMS Slot 条件字段 */}
-      {values.type === "ams_slot" && (
-        <div className="space-y-4 p-4 border border-border rounded-lg bg-muted/30">
-          <p className="text-sm font-medium text-muted-foreground">AMS 插槽信息</p>
-          <div className="space-y-2">
-            <Label htmlFor="printer_name">打印机名称 *</Label>
-            <Input
-              id="printer_name"
-              value={values.printer_name}
-              onChange={(e) => update("printer_name", e.target.value)}
-              placeholder="如：X1C-01"
-              required
-              className="h-12"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="ams_unit">AMS 单元 *</Label>
-              <Input
-                id="ams_unit"
-                value={values.ams_unit}
-                onChange={(e) => update("ams_unit", e.target.value)}
-                placeholder="如：1"
-                required
-                className="h-12"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ams_slot">插槽号 *</Label>
-              <Input
-                id="ams_slot"
-                value={values.ams_slot}
-                onChange={(e) => update("ams_slot", e.target.value)}
-                placeholder="如：1"
-                required
-                className="h-12"
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
