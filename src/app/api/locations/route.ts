@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, type = "custom", short_code, is_default, printer_name, ams_unit, ams_slot } = body;
+    const { name, type = "custom", is_default, printer_name, ams_unit, ams_slot } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: "位置名称不能为空" }, { status: 400 });
@@ -53,7 +53,6 @@ export async function POST(request: NextRequest) {
         data: {
           name: name.trim(),
           type,
-          short_code: short_code?.trim() || undefined,
           is_default: is_default ?? false,
           printer_name: printer_name?.trim() || undefined,
           ams_unit: ams_unit?.trim() || undefined,

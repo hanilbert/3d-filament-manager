@@ -1,754 +1,557 @@
-# Spool Tracker — 测试用例文档
+# Spool Tracker — 测试用例设计（重构版）
 
-**版本**: v1.0
-**覆盖范围**: API 接口测试 + UI/功能测试 + E2E 工作流测试
-
----
-
-## 目录
-
-1. [测试环境准备](#1-测试环境准备)
-2. [认证模块测试](#2-认证模块测试)
-3. [全局耗材字典 API 测试](#3-全局耗材字典-api-测试)
-4. [料卷 API 测试](#4-料卷-api-测试)
-5. [位置 API 测试](#5-位置-api-测试)
-6. [文件上传 API 测试](#6-文件上传-api-测试)
-7. [UI/页面功能测试](#7-ui页面功能测试)
-8. [E2E 工作流测试](#8-e2e-工作流测试)
-9. [边界与异常测试](#9-边界与异常测试)
-10. [打印功能测试](#10-打印功能测试)
+**版本**: v2.0  
+**日期**: 2026-02-23  
+**目标**: 基于当前实现建立可回归、可分层执行的测试用例集（API + UI + 打印 + 安全边界）
 
 ---
 
-## 1. 测试环境准备
+## 1. 设计原则
 
-### 1.1 本地环境启动
+- 覆盖“真实实现”，不沿用已过时行为假设。
+- 先跑 P0 冒烟集，再跑 P1/P2 全量回归。
+- API 优先自动化，UI/打印采用手工 + 静态验证组合。
+- 每个用例都能映射到明确业务风险。
+
+---
+
+## 2. 测试范围
+
+### 2.1 在测范围
+
+- 鉴权：`/api/auth/login`、`/api/auth/logout`、`middleware` 路由拦截
+- Catalog：CRUD、分组查询、品牌重命名
+- Spool：CRUD、状态流转、扫码改位置
+- Location：类型化位置、AMS 校验、删除解绑
+- 上传：Logo 上传与读取
+- 页面：登录、列表、详情、关键交互
+- 打印：料卷标签页、位置标签页
+
+### 2.2 不在本轮范围
+
+- 浏览器兼容性矩阵（仅覆盖 Chrome 最新）
+- 高并发压测与容量上限
+- 自动化视觉回归（像素级）
+
+---
+
+## 3. 环境与数据
+
+## 3.1 环境前提
 
 ```bash
+npm install
+cp .env.example .env
+npx prisma migrate dev
 npm run dev
-# 默认密码：dev123
-# 访问地址：http://localhost:3000
 ```
 
-### 1.2 获取测试 Token
+- 默认地址：`http://localhost:3000`
+- 测试密码：读取 `.env` 中 `APP_PASSWORD`
+
+## 3.2 令牌获取
 
 ```bash
 curl -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"password": "dev123"}'
-
-# 返回：{"token": "xxx-xxx-xxx", "expiresAt": 1234567890}
-# 保存 token 用于后续 API 测试
-export TOKEN="xxx-xxx-xxx"
+  -d '{"password":"<APP_PASSWORD>"}'
 ```
 
-### 1.3 测试数据约定
+保存返回 `token` 到 `TOKEN` 变量。
 
-- 使用真实 UUID 格式（`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`）
-- 测试后清理创建的测试数据，避免污染开发数据库
+## 3.3 测试数据约定
 
----
-
-## 2. 认证模块测试
-
-### TC-AUTH-001：正确密码登录
-
-**输入**：`POST /api/auth/login` `{"password": "dev123"}`
-**期望**：
-- HTTP 200
-- 返回 `{ token: string, expiresAt: number }`
-- token 为非空字符串
-
-### TC-AUTH-002：错误密码登录
-
-**输入**：`POST /api/auth/login` `{"password": "wrongpassword"}`
-**期望**：
-- HTTP 401
-- 返回 `{ error: "..." }`
-- 不返回 token
-
-### TC-AUTH-003：空密码登录
-
-**输入**：`POST /api/auth/login` `{"password": ""}`
-**期望**：
-- HTTP 401
-
-### TC-AUTH-004：无 Token 访问受保护 API
-
-**输入**：`GET /api/catalog`（无 Authorization Header）
-**期望**：
-- HTTP 401
-
-### TC-AUTH-005：过期/无效 Token 访问受保护 API
-
-**输入**：`GET /api/catalog` `Authorization: Bearer invalidtoken`
-**期望**：
-- HTTP 401
-
-### TC-AUTH-006：页面路由鉴权（未登录）
-
-**操作**：清除 Cookie，直接访问 `http://localhost:3000/spools`
-**期望**：
-- 自动重定向到 `/login?from=/spools`
-
-> **🐛 已修复（2026-02-22）**：`src/proxy.ts` 中间件在 Edge Runtime 调用了依赖 Node.js Runtime 内存的 `verifyToken()`，导致即使登录成功、设置了 Cookie 之后，中间件仍然因 token 查不到而把所有请求重定向回登录页，表现为"登录按钮闪烁一下然后无反应"。修复方案：中间件只检查 Cookie 是否存在，真正的 token 有效性验证仍由 API 路由层（Node.js Runtime）负责。
-
-### TC-AUTH-007：登录后跳转回原页面
-
-**操作**：访问 `/spools` 被重定向到 `/login?from=/spools` → 登录成功
-**期望**：
-- 登录成功后跳转回 `/spools`（而非固定跳转 `/spools`）
-
-> **🐛 已修复（2026-02-22）**：登录页忽略了 `from` 查询参数，始终硬编码跳转到 `/spools`。修复方案：读取 `useSearchParams().get("from")` 并在成功登录后跳转到该地址；同时移除了多余的 `router.refresh()` 调用（该调用可能干扰正在进行中的 `router.push()` 导航）。
+- 使用前缀 `TC2_` 标记测试数据（如品牌、位置名）。
+- 允许保留少量历史测试数据，断言应避免依赖“空库”。
+- 需要“空态”断言时单独准备隔离数据库。
 
 ---
 
-## 3. 全局耗材字典 API 测试
+## 4. 用例格式
 
-### TC-CAT-001：新建耗材字典（必填字段）
+每条用例使用统一结构：
 
-**输入**：
-```bash
-curl -X POST http://localhost:3000/api/catalog \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "brand": "Bambu Lab",
-    "material": "PLA Matte",
-    "color_name": "草绿 11500",
-    "nozzle_temp": "190-230°C",
-    "bed_temp": "35-45°C",
-    "print_speed": "≤300 mm/s"
-  }'
-```
-**期望**：
-- HTTP 201
-- 返回含 `id`（UUID 格式）、所有填写字段、`created_at` 的完整对象
-
-### TC-CAT-002：新建耗材字典（含可选字段）
-
-**输入**：在 TC-CAT-001 基础上增加 `"color_hex": "#5C8A3C"` 和 `"logo_url": "https://example.com/logo.png"`
-**期望**：
-- HTTP 201
-- 返回对象中 `color_hex` 和 `logo_url` 值正确
-
-### TC-CAT-003：新建耗材字典（缺少必填字段）
-
-**输入**：缺少 `brand` 字段
-**期望**：
-- HTTP 400
-- 返回错误信息指明缺少字段
-
-### TC-CAT-004：获取字典列表
-
-**输入**：`GET /api/catalog`
-**期望**：
-- HTTP 200
-- 返回数组，每条记录含 `_count.spools`（关联料卷数）
-
-### TC-CAT-005：按品牌搜索
-
-**输入**：`GET /api/catalog?brand=Bambu+Lab`
-**期望**：
-- HTTP 200
-- 返回数组，所有记录 `brand` 均为 "Bambu Lab"
-
-### TC-CAT-006：按关键词搜索
-
-**输入**：`GET /api/catalog?q=草绿`
-**期望**：
-- HTTP 200
-- 返回数组，颜色名或品牌名或材质名包含"草绿"
-
-### TC-CAT-007：获取字典详情
-
-**前置**：使用 TC-CAT-001 创建的 ID
-**输入**：`GET /api/catalog/{id}`
-**期望**：
-- HTTP 200
-- 返回单个对象，含 `spools` 数组（关联的 ACTIVE 料卷）
-
-### TC-CAT-008：获取不存在的字典
-
-**输入**：`GET /api/catalog/00000000-0000-0000-0000-000000000000`
-**期望**：
-- HTTP 404
-
-### TC-CAT-009：更新耗材字典
-
-**输入**：`PATCH /api/catalog/{id}` `{"color_hex": "#FF0000"}`
-**期望**：
-- HTTP 200
-- 返回更新后的对象，`color_hex` 为 "#FF0000"，其他字段不变
-
-### TC-CAT-010：删除无关联料卷的字典
-
-**前置**：创建字典（无 Spool 关联）
-**输入**：`DELETE /api/catalog/{id}`
-**期望**：
-- HTTP 200
-
-### TC-CAT-011：删除有关联料卷的字典
-
-**前置**：创建字典，创建关联 Spool
-**输入**：`DELETE /api/catalog/{id}`
-**期望**：
-- HTTP 400
-- 返回错误信息，提示存在关联 Spool
+- `ID`
+- `优先级`（P0/P1/P2）
+- `类型`（API 自动化 / UI 手工 / 静态验证）
+- `前置`
+- `步骤`
+- `期望`
 
 ---
 
-## 4. 料卷 API 测试
+## 5. P0 冒烟集（建议每次提交必跑）
 
-### TC-SPOOL-001：创建料卷
-
-**前置**：已有 GlobalFilament 记录（取其 id 为 `{filamentId}`）
-**输入**：
-```bash
-curl -X POST http://localhost:3000/api/spools \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"global_filament_id": "{filamentId}"}'
-```
-**期望**：
-- HTTP 201
-- 返回含 `id`（UUID）、`status: "ACTIVE"`、`location_id: null` 的对象
-
-### TC-SPOOL-002：创建料卷（globalFilament 不存在）
-
-**输入**：`{"global_filament_id": "00000000-0000-0000-0000-000000000000"}`
-**期望**：
-- HTTP 404 或 400
-
-### TC-SPOOL-003：获取 ACTIVE 料卷列表
-
-**输入**：`GET /api/spools?status=ACTIVE`
-**期望**：
-- HTTP 200
-- 所有返回记录 `status` 均为 `"ACTIVE"`
-- 每条记录含嵌套的 `globalFilament` 和 `location`（可为 null）对象
-
-### TC-SPOOL-004：获取 EMPTY 料卷列表
-
-**输入**：`GET /api/spools?status=EMPTY`
-**期望**：
-- HTTP 200
-- 所有返回记录 `status` 均为 `"EMPTY"`
-
-### TC-SPOOL-005：获取料卷详情
-
-**输入**：`GET /api/spools/{id}`
-**期望**：
-- HTTP 200
-- 含完整的 `globalFilament` 信息（品牌、材质、温度等）
-- 含 `location` 信息（可为 null）
-
-### TC-SPOOL-006：更新料卷位置
-
-**前置**：已有 Location 记录（取其 id 为 `{locationId}`）
-**输入**：`PATCH /api/spools/{id}` `{"location_id": "{locationId}"}`
-**期望**：
-- HTTP 200
-- 返回对象中 `location_id` 更新为 `{locationId}`
-
-### TC-SPOOL-007：清除料卷位置
-
-**输入**：`PATCH /api/spools/{id}` `{"location_id": null}`
-**期望**：
-- HTTP 200
-- 返回对象中 `location_id` 为 null
-
-### TC-SPOOL-008：标记料卷为已用完
-
-**输入**：`PATCH /api/spools/{id}` `{"status": "EMPTY"}`
-**期望**：
-- HTTP 200
-- 返回对象中 `status` 为 `"EMPTY"`
-
-### TC-SPOOL-009：更新非白名单字段（应被忽略）
-
-**输入**：`PATCH /api/spools/{id}` `{"global_filament_id": "other-id", "created_at": "2020-01-01"}`
-**期望**：
-- HTTP 200（不报错）
-- 但 `global_filament_id` 和 `created_at` 未被修改
+| ID | 类型 | 场景 | 期望 |
+|---|---|---|---|
+| SMK-001 | API 自动化 | 正确密码登录 | 200，返回 `token` 与 `expiresAt` |
+| SMK-002 | API 自动化 | 无 token 访问 `/api/catalog` | 401 |
+| SMK-003 | API 自动化 | 创建 Catalog（含 `material_type`） | 201，返回 `id` |
+| SMK-004 | API 自动化 | 基于 Catalog 创建 Spool | 201，`status=ACTIVE` |
+| SMK-005 | API 自动化 | 创建 Location（`type=custom`） | 201，返回 `id` |
+| SMK-006 | API 自动化 | PATCH Spool 位置 | 200，`location_id` 更新 |
+| SMK-007 | API 自动化 | PATCH Spool 状态为 `EMPTY` | 200，`status=EMPTY` |
+| SMK-008 | API 自动化 | EMPTY 料卷重新入库（POST /api/spools） | 201，新 `id`，`status=ACTIVE` |
+| SMK-009 | API 自动化 | 删除 Location | 200，关联 Spool 被解绑 |
+| SMK-010 | API 自动化 | 上传合法 Logo | 201，返回可访问 `url` |
+| SMK-011 | UI 手工 | 登录后进入 `/spools` | 页面可用，Tab 正常 |
+| SMK-012 | UI 手工 | 打开 `/location/{id}/print` | 页面加载后触发打印 |
 
 ---
 
-## 5. 位置 API 测试
+## 6. API 合同测试（全量）
 
-### TC-LOC-001：创建位置
+## 6.1 AUTH
 
-**输入**：
-```bash
-curl -X POST http://localhost:3000/api/locations \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "防潮箱 A"}'
-```
-**期望**：
-- HTTP 201
-- 返回含 `id`（UUID）和 `name` 的对象
+### TC2-AUTH-001（P0，API 自动化）正确密码登录
 
-### TC-LOC-002：创建位置（缺少名称）
+- 步骤：`POST /api/auth/login`，body 含正确密码
+- 期望：200，返回 `token`（非空字符串）与 `expiresAt`（number）
 
-**输入**：`{"name": ""}` 或空 body
-**期望**：
-- HTTP 400
+### TC2-AUTH-002（P0，API 自动化）错误密码登录
 
-### TC-LOC-003：获取位置列表
+- 步骤：`POST /api/auth/login`，错误密码
+- 期望：401，不返回 `token`
 
-**输入**：`GET /api/locations`
-**期望**：
-- HTTP 200
-- 每条记录含 `_count.spools`（该位置下的 ACTIVE 料卷数）
+### TC2-AUTH-003（P1，API 自动化）空密码登录
 
-### TC-LOC-004：获取位置详情
+- 步骤：`POST /api/auth/login`，`password=""`
+- 期望：401
 
-**输入**：`GET /api/locations/{id}`
-**期望**：
-- HTTP 200
-- 含 `spools` 数组（位置下的 ACTIVE 料卷，含嵌套的 `globalFilament` 信息）
+### TC2-AUTH-004（P0，API 自动化）无 token 访问受保护 API
 
-### TC-LOC-005：更新位置名称
+- 步骤：`GET /api/spools`
+- 期望：401
 
-**输入**：`PATCH /api/locations/{id}` `{"name": "防潮箱 B"}`
-**期望**：
-- HTTP 200
-- 返回 `name` 更新后的对象
+### TC2-AUTH-005（P0，API 自动化）无效 token 访问受保护 API
 
-### TC-LOC-006：删除有料卷的位置
+- 步骤：`GET /api/spools`，`Authorization: Bearer invalid`
+- 期望：401
 
-**前置**：位置下有 Spool 关联
-**输入**：`DELETE /api/locations/{id}`
-**期望**：
-- HTTP 200
-- 位置被删除
-- 原关联 Spool 的 `location_id` 被置为 null（Spool 本身不删除）
+### TC2-AUTH-006（P1，API 自动化）登出接口可调用
 
-**验证**：
-```bash
-# 验证 Spool 仍存在但 location_id 为 null
-curl http://localhost:3000/api/spools/{spoolId} -H "Authorization: Bearer $TOKEN"
-```
+- 步骤：`POST /api/auth/logout`
+- 期望：200，`success=true`，响应头含清理 `spool_tracker_token` 的 Set-Cookie
 
-### TC-LOC-007：删除不存在的位置
+### TC2-AUTH-007（P0，UI 手工）未登录访问页面被重定向
 
-**输入**：`DELETE /api/locations/00000000-0000-0000-0000-000000000000`
-**期望**：
-- HTTP 404
+- 前置：清空 cookie
+- 步骤：访问 `/spools`
+- 期望：重定向到 `/login?from=/spools`
+
+### TC2-AUTH-008（P1，UI 手工）登录后回跳 from
+
+- 步骤：从 `/login?from=/catalog` 登录
+- 期望：跳转回 `/catalog`
+
+## 6.2 CATALOG
+
+### TC2-CAT-001（P0，API 自动化）创建最小合法 Catalog
+
+- 步骤：`POST /api/catalog`
+- body：`brand`、`color_name`、`material_type`（`material` 可空）
+- 期望：201，返回 `id`
+
+### TC2-CAT-002（P1，API 自动化）创建 Catalog（含扩展字段）
+
+- 步骤：提交 `color_hex/logo_url/nozzle_temp/...` 等字段
+- 期望：201，字段持久化正确
+
+### TC2-CAT-003（P0，API 自动化）缺少 `brand`
+
+- 步骤：`POST /api/catalog` 不传 `brand`
+- 期望：400
+
+### TC2-CAT-004（P0，API 自动化）缺少 `material_type`
+
+- 步骤：`POST /api/catalog` 不传 `material_type`
+- 期望：400
+
+### TC2-CAT-005（P1，API 自动化）`material_type="__custom"`
+
+- 步骤：提交哨兵值 `__custom`
+- 期望：400
+
+### TC2-CAT-006（P0，API 自动化）列表查询（默认扁平）
+
+- 步骤：`GET /api/catalog`
+- 期望：200，数组项含 `_count.spools`
+
+### TC2-CAT-007（P1，API 自动化）关键词查询 `q`
+
+- 步骤：`GET /api/catalog?q=<keyword>`
+- 期望：200，结果匹配 brand/material/color_name 任一字段
+
+### TC2-CAT-008（P1，API 自动化）品牌过滤 `brand`
+
+- 步骤：`GET /api/catalog?brand=<name>`
+- 期望：200，结果品牌符合过滤条件
+
+### TC2-CAT-009（P1，API 自动化）材料过滤 `material`
+
+- 步骤：`GET /api/catalog?material=<name>`
+- 期望：200，结果材料符合过滤条件
+
+### TC2-CAT-010（P1，API 自动化）按材料大类过滤 `materialType`
+
+- 步骤：`GET /api/catalog?materialType=PLA`
+- 期望：200，结果 `material_type=PLA`
+
+### TC2-CAT-011（P1，API 自动化）分组：品牌列表
+
+- 步骤：`GET /api/catalog?groupBy=brandList`
+- 期望：200，返回去重品牌与 logo
+
+### TC2-CAT-012（P1，API 自动化）分组：品牌聚合
+
+- 步骤：`GET /api/catalog?groupBy=brand`
+- 期望：200，返回 `count/materials/materialTypes/spoolCount`
+
+### TC2-CAT-013（P1，API 自动化）分组：材料大类
+
+- 步骤：`GET /api/catalog?groupBy=material`
+- 期望：200，返回 `material_type/subMaterialCount/brandCount/spoolCount`
+
+### TC2-CAT-014（P1，API 自动化）分组：子材料（缺参数）
+
+- 步骤：`GET /api/catalog?groupBy=materialType`
+- 期望：400
+
+### TC2-CAT-015（P1，API 自动化）分组：子材料（有参数）
+
+- 步骤：`GET /api/catalog?groupBy=materialType&materialType=PLA`
+- 期望：200，返回按 `material` 聚合结果
+
+### TC2-CAT-016（P0，API 自动化）详情存在
+
+- 步骤：`GET /api/catalog/{id}`
+- 期望：200，含 `spools`（仅 ACTIVE）
+
+### TC2-CAT-017（P1，API 自动化）详情不存在
+
+- 步骤：`GET /api/catalog/{fakeId}`
+- 期望：404
+
+### TC2-CAT-018（P0，API 自动化）PATCH 更新
+
+- 步骤：`PATCH /api/catalog/{id}` 更新 `color_hex`
+- 期望：200，字段变化生效
+
+### TC2-CAT-019（P0，API 自动化）删除无关联字典
+
+- 步骤：`DELETE /api/catalog/{id}`（无 spool）
+- 期望：200，`success=true`
+
+### TC2-CAT-020（P0，API 自动化）删除有关联字典
+
+- 步骤：先建 spool，再删该 catalog
+- 期望：400，拒绝删除
+
+### TC2-CAT-021（P1，API 自动化）品牌重命名（POST）
+
+- 步骤：`POST /api/catalog/brand-rename` 传 `oldBrand/newBrand`
+- 期望：200，返回 `updated`，对应记录品牌名更新
+
+### TC2-CAT-022（P2，API 自动化）品牌重命名（PATCH）
+
+- 步骤：`PATCH /api/catalog/brand-rename`
+- 期望：405（方法不允许）
+
+## 6.3 SPOOL
+
+### TC2-SPOOL-001（P0，API 自动化）创建 Spool 成功
+
+- 步骤：`POST /api/spools` with `global_filament_id`
+- 期望：201，`status=ACTIVE`，`location_id=null`
+
+### TC2-SPOOL-002（P0，API 自动化）创建 Spool 失败（字典不存在）
+
+- 步骤：`POST /api/spools` with fake id
+- 期望：404
+
+### TC2-SPOOL-003（P1，API 自动化）列表过滤 ACTIVE
+
+- 步骤：`GET /api/spools?status=ACTIVE`
+- 期望：200，结果状态全部 ACTIVE
+
+### TC2-SPOOL-004（P1，API 自动化）列表过滤 EMPTY
+
+- 步骤：`GET /api/spools?status=EMPTY`
+- 期望：200，结果状态全部 EMPTY
+
+### TC2-SPOOL-005（P0，API 自动化）详情存在
+
+- 步骤：`GET /api/spools/{id}`
+- 期望：200，含 `globalFilament` 与 `location`
+
+### TC2-SPOOL-006（P1，API 自动化）详情不存在
+
+- 步骤：`GET /api/spools/{fakeId}`
+- 期望：404
+
+### TC2-SPOOL-007（P0，API 自动化）更新位置
+
+- 步骤：`PATCH /api/spools/{id}` 设置 `location_id`
+- 期望：200，返回对象位置更新
+
+### TC2-SPOOL-008（P1，API 自动化）清空位置
+
+- 步骤：`PATCH /api/spools/{id}` 设置 `location_id=null`
+- 期望：200
+
+### TC2-SPOOL-009（P0，API 自动化）标记 EMPTY
+
+- 步骤：`PATCH /api/spools/{id}` 设置 `status=EMPTY`
+- 期望：200，状态更新
+
+### TC2-SPOOL-010（P1，API 自动化）非白名单字段应被忽略
+
+- 步骤：PATCH `global_filament_id/created_at`
+- 期望：200，但字段值不改变
+
+### TC2-SPOOL-011（P1，API 自动化）更新 metadata
+
+- 步骤：`PATCH /api/spools/{id}` 设置 `metadata`
+- 期望：200，`metadata` 持久化
+
+### TC2-SPOOL-012（P0，API 自动化）删除 Spool
+
+- 步骤：`DELETE /api/spools/{id}`
+- 期望：200，`success=true`
+
+## 6.4 LOCATION
+
+### TC2-LOC-001（P0，API 自动化）创建 custom 位置
+
+- 步骤：`POST /api/locations` with `name`
+- 期望：201，`type=custom`
+
+### TC2-LOC-002（P1，API 自动化）空名称创建失败
+
+- 步骤：`POST /api/locations` with empty `name`
+- 期望：400
+
+### TC2-LOC-003（P1，API 自动化）创建 AMS 位置成功
+
+- 步骤：`POST /api/locations`，`type=ams_slot` + `printer_name/ams_unit/ams_slot`
+- 期望：201
+
+### TC2-LOC-004（P0，API 自动化）创建 AMS 缺字段失败
+
+- 步骤：`POST /api/locations`，`type=ams_slot` 缺任一必填
+- 期望：400
+
+### TC2-LOC-005（P1，API 自动化）列表查询
+
+- 步骤：`GET /api/locations`
+- 期望：200，项含 `_count.spools`（ACTIVE 计数）
+
+### TC2-LOC-006（P1，API 自动化）详情查询
+
+- 步骤：`GET /api/locations/{id}`
+- 期望：200，含 `spools` 与嵌套 `globalFilament`
+
+### TC2-LOC-007（P1，API 自动化）更新基础字段
+
+- 步骤：`PATCH /api/locations/{id}` 更新 `name/type`
+- 期望：200
+
+### TC2-LOC-008（P1，API 自动化）更新 AMS 缺字段失败
+
+- 步骤：`PATCH /api/locations/{id}` 设置 `type=ams_slot` 但缺字段
+- 期望：400
+
+### TC2-LOC-009（P1，API 自动化）默认位置互斥
+
+- 前置：至少两个 location
+- 步骤：先 A 设 `is_default=true`，再 B 设 `is_default=true`
+- 期望：B=true，A=false
+
+### TC2-LOC-010（P0，API 自动化）删除位置会解绑 Spool
+
+- 前置：某 spool 绑定该 location
+- 步骤：`DELETE /api/locations/{id}`
+- 期望：200；该 spool 仍存在且 `location_id=null`
+
+### TC2-LOC-011（P1，API 自动化）删除不存在位置
+
+- 步骤：`DELETE /api/locations/{fakeId}`
+- 期望：404
+
+## 6.5 LOGO 上传/读取
+
+### TC2-UPLOAD-001（P0，API 自动化）上传 PNG
+
+- 步骤：`POST /api/upload/logo` 上传 png
+- 期望：201，返回 `url`，GET 该 URL 返回 `image/png`
+
+### TC2-UPLOAD-002（P1，API 自动化）上传 SVG
+
+- 步骤：上传 svg
+- 期望：201
+
+### TC2-UPLOAD-003（P0，API 自动化）不支持类型
+
+- 步骤：上传 pdf/exe
+- 期望：400
+
+### TC2-UPLOAD-004（P0，API 自动化）超大文件
+
+- 步骤：上传 >5MB
+- 期望：400
+
+### TC2-UPLOAD-005（P1，API 自动化）路径穿越防护
+
+- 步骤：`GET /api/logos/../../../etc/passwd`
+- 期望：400 或 404，不泄漏系统文件
+
+### TC2-UPLOAD-006（P1，API 自动化）读取不存在文件
+
+- 步骤：`GET /api/logos/nonexistent.png`
+- 期望：404
 
 ---
 
-## 6. 文件上传 API 测试
+## 7. UI 与交互回归
 
-### TC-UPLOAD-001：上传合法 PNG Logo
+## 7.1 核心页面
 
-**输入**：
-```bash
-curl -X POST http://localhost:3000/api/upload/logo \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "file=@/path/to/logo.png"
-```
-**期望**：
-- HTTP 200
-- 返回 `{ path: "/api/logos/{uuid}.png" }`
-- 访问该 path 能正常返回图片
+### TC2-UI-001（P0，UI 手工）登录页
 
-### TC-UPLOAD-002：上传合法 SVG Logo
+- 错误密码显示错误提示
+- 正确登录写入 localStorage + cookie，并完成路由跳转
 
-**输入**：上传 `.svg` 文件
-**期望**：
-- HTTP 200
-- 返回正确的 path
+### TC2-UI-002（P0，UI 手工）Spools 列表
 
-### TC-UPLOAD-003：上传不支持的文件类型
+- `ACTIVE/EMPTY` Tab 切换正常
+- 卡片展示品牌/材料/颜色/位置/日期
 
-**输入**：上传 `.exe` 或 `.pdf` 文件
-**期望**：
-- HTTP 400
-- 返回错误信息，指明文件类型不支持
+### TC2-UI-003（P0，UI 手工）Spool 详情 ACTIVE 操作集
 
-### TC-UPLOAD-004：上传超过 5MB 的文件
+- 展示按钮：`修改位置`、`标签预览`、`标记为已用完`、`删除料卷`
 
-**输入**：上传 > 5MB 的图片
-**期望**：
-- HTTP 400
-- 返回文件大小超限的错误信息
+### TC2-UI-004（P0，UI 手工）Spool 详情 EMPTY 操作集
 
-### TC-UPLOAD-005：路径穿越攻击防护
+- 展示归档提示
+- 展示按钮：`重新入库`、`删除料卷`
 
-**输入**：`GET /api/logos/../../../etc/passwd`
-**期望**：
-- HTTP 400 或 404（basename 过滤后文件不存在）
-- 不返回任何系统文件内容
+### TC2-UI-005（P1，UI 手工）扫码改位置
 
-### TC-UPLOAD-006：访问不存在的 Logo
+- 识别 `/location/{uuid}` 与纯 UUID 两种扫描结果
+- 无效二维码显示错误提示
 
-**输入**：`GET /api/logos/nonexistent-file.png`
-**期望**：
-- HTTP 404
+### TC2-UI-006（P1，UI 手工）Catalog 搜索
 
----
+- 输入后约 300ms 触发查询
+- 结果与关键词匹配
 
-## 7. UI/页面功能测试
+### TC2-UI-007（P1，UI 手工）Catalog 新建/编辑
 
-### TC-UI-001：登录页面
+- 品牌下拉与自定义输入正常
+- 材料大类下拉与自定义输入正常
+- 可折叠参数区可展开/收起
 
-**步骤**：
-1. 访问 `http://localhost:3000/login`
-2. 输入错误密码，点击登录
+### TC2-UI-008（P1，UI 手工）Location 新建/编辑
 
-**期望**：
-- 显示错误提示（不刷新页面）
+- 类型切换正确显示字段
+- `ams_slot` 时展示并校验专属字段
 
-**步骤**：
-3. 输入正确密码 `dev123`，点击登录
+### TC2-UI-009（P1，UI 手工）桌面导航
 
-**期望**：
-- 跳转到 `/spools`
-- localStorage 中有 `spool_tracker_token`
-- Cookie 中有 `spool_tracker_token`
+- 桌面侧边栏显示一级导航
+- `/catalog` 展开“品牌/材料”子导航
 
----
+### TC2-UI-010（P1，UI 手工）导航隐藏规则
 
-### TC-UI-002：料卷列表页
+- `/login` 与 `*/print` 页面不显示底部导航与侧边栏
 
-**前置**：存在 ACTIVE 和 EMPTY 料卷各至少 1 条
+## 7.2 打印与标签
 
-**步骤**：
-1. 访问 `/spools`
+### TC2-PRINT-001（P1，UI 手工）料卷标签页可用
 
-**期望**：
-- 显示「使用中」和「已归档」两个 Tab
-- 「使用中」Tab 显示 ACTIVE 料卷列表
-- 每条显示颜色色块（有 hex）或灰色占位（无 hex）、品牌/材质/颜色名、位置、入库时间
+- 打开 `/spool/{id}/print` 正常渲染
+- 可选择参数槽位并下载 PNG
 
-**步骤**：
-2. 点击「已归档」Tab
+### TC2-PRINT-002（P1，UI 手工）位置标签打印页
 
-**期望**：
-- 显示 EMPTY 料卷列表
+- 打开 `/location/{id}/print` 渲染 40x30mm 布局
+- 页面加载自动触发打印
+
+### TC2-PRINT-003（P2，静态验证）二维码内容正确
+
+- 料卷二维码包含 `/spool/{id}`
+- 位置二维码包含 `/location/{id}`
 
 ---
 
-### TC-UI-003：料卷详情页（ACTIVE 状态）
+## 8. E2E 业务流
 
-**步骤**：
-1. 访问 ACTIVE 料卷的 `/spool/{id}`
+### TC2-E2E-001（P0，API+UI）新耗材入库闭环
 
-**期望**：
-- 显示：品牌 Logo（若有）、品牌/材质/颜色名、颜色色块（若有 hex）、打印参数、当前位置、入库时间、「使用中」状态标签
-- 显示三个操作按钮：「修改位置」、「打印标签」、「标记为已用完」
-- 按钮高度 ≥ 48px（大按钮原则）
+- 流程：创建 Catalog -> 创建 Spool -> 打开料卷详情
+- 期望：详情展示完整信息，状态 ACTIVE
 
----
+### TC2-E2E-002（P0，API+UI）改位置闭环
 
-### TC-UI-004：料卷详情页（EMPTY 状态）
+- 流程：创建 Location -> 更新 Spool 位置 -> 刷新详情
+- 期望：位置名正确显示
 
-**步骤**：
-1. 访问 EMPTY 料卷的 `/spool/{id}`
+### TC2-E2E-003（P0，API+UI）归档与再入库闭环
 
-**期望**：
-- 页面顶部显示黄色/橙色警告横幅「⚠️ 此耗材已归档（已用完）」
-- 显示「重新入库」按钮
-- 不显示「修改位置」和「标记为已用完」按钮
+- 流程：ACTIVE -> EMPTY -> 重新创建 ACTIVE
+- 期望：旧记录保留，新记录为新 ID
 
----
+### TC2-E2E-004（P1，API+UI）位置删除闭环
 
-### TC-UI-005：标记料卷已用完（含确认弹窗）
-
-**步骤**：
-1. 在 ACTIVE 料卷详情页，点击「标记为已用完」
-
-**期望**：
-- 弹出确认对话框，显示确认和取消按钮
-
-**步骤**：
-2. 点击「取消」
-
-**期望**：
-- 弹窗关闭，料卷状态不变
-
-**步骤**：
-3. 再次点击「标记为已用完」→ 点击「确认」
-
-**期望**：
-- 弹窗关闭
-- 页面更新为 EMPTY 状态（显示归档横幅）
-- 「修改位置」等按钮消失
+- 流程：绑定位置 -> 删除位置 -> 校验 spool
+- 期望：spool 存在，`location_id=null`
 
 ---
 
-### TC-UI-006：重新入库
+## 9. 安全与边界
 
-**步骤**：
-1. 在 EMPTY 料卷详情页，点击「重新入库」
+### TC2-EDGE-001（P1，API 自动化）超长字符串
 
-**期望**：
-- 跳转到新创建的 ACTIVE 料卷详情页（URL 为新的 `/spool/{newId}`）
-- 新料卷关联同一 GlobalFilament
-- 新料卷 status=ACTIVE，location_id=null
+- 在 `brand/name` 传入 1000 字符
+- 期望：接口返回可控（不 500）
 
----
+### TC2-EDGE-002（P1，API 自动化）并发更新同一 spool 位置
 
-### TC-UI-007：字典列表搜索
+- 并发发起两次 `PATCH /api/spools/{id}`
+- 期望：最终一致，不出现非法中间态
 
-**步骤**：
-1. 访问 `/catalog`
-2. 在搜索框输入"Bambu"
+### TC2-EDGE-003（P1，UI 手工）无 `color_hex` 降级展示
 
-**期望**：
-- 输入后约 300ms，列表自动过滤，只显示品牌/材质/颜色名包含"Bambu"的条目
-- 无需按回车
+- 列表与详情显示灰色占位色块，不崩溃
 
----
+### TC2-EDGE-004（P1，UI 手工）无 `logo_url` 降级展示
 
-### TC-UI-008：新建耗材字典（Logo 上传）
+- 使用品牌首字母占位，不影响流程
 
-**步骤**：
-1. 访问 `/catalog/new`
-2. 填写所有必填字段
-3. 在 Logo 区域选择「上传文件」Tab，选择一个 PNG 文件
-4. 点击「上传」按钮
-5. 提交表单
+### TC2-EDGE-005（P2，API 自动化）Token 篡改
 
-**期望**：
-- 上传成功后，Logo 预览区显示上传的图片
-- 提交后跳转到新字典的详情页
-- 详情页显示上传的品牌 Logo
+- 人工修改 token payload 或签名
+- 期望：401
 
 ---
 
-### TC-UI-009：位置列表新建位置
+## 10. 执行建议
 
-**步骤**：
-1. 访问 `/locations`
-2. 点击「新建位置」或展开内联表单
-3. 输入名称「防潮箱 A」
-4. 提交
-
-**期望**：
-- 位置列表中出现「防潮箱 A」
-- 显示该位置下的料卷数量（初始为 0）
+- PR 阶段：执行第 5 章 P0 冒烟集 + 涉及模块对应 P1 用例。
+- 合并前：执行第 6 章 API 全量 + 第 8 章 E2E。
+- 发布前：额外执行第 7 章打印与关键 UI 用例。
 
 ---
 
-### TC-UI-010：位置详情页内联编辑名称
-
-**步骤**：
-1. 访问 `/location/{id}`
-2. 点击编辑按钮
-3. 修改名称为「防潮箱 B」
-4. 保存
-
-**期望**：
-- 名称更新为「防潮箱 B」
-
----
-
-### TC-UI-011：底部导航显示/隐藏
-
-**步骤**：
-1. 访问 `/spools`
-
-**期望**：
-- 页面底部显示底部导航（料卷、字典、位置 三个 Tab）
-
-**步骤**：
-2. 访问 `/login`
-
-**期望**：
-- 无底部导航
-
-**步骤**：
-3. 访问 `/spool/{id}/print`
-
-**期望**：
-- 无底部导航（纯打印页面）
-
----
-
-## 8. E2E 工作流测试
-
-### TC-E2E-001：完整入库工作流
-
-**步骤**：
-1. 访问 `/catalog/new`，新建字典「eSUN PETG 透明」，含 `color_hex: "#E8F4F8"`
-2. 在字典详情页点击「加入我的料卷」
-3. 验证跳转到新 Spool 详情页，status=ACTIVE，无位置
-4. 访问 `/locations`，创建位置「货架 1 号」
-5. 访问 `/location/{locationId}/print`，验证打印页可以显示
-6. 回到 Spool 详情页，点击「打印标签」，验证跳转到打印页
-
-**期望**：全流程无报错，数据正确
-
----
-
-### TC-E2E-002：扫码更新位置（模拟扫码）
-
-> 注意：本地 HTTP 环境不支持真实扫码，通过 API 模拟
-
-**步骤**：
-1. 有一个 ACTIVE Spool（id=`{spoolId}`）
-2. 有一个 Location（id=`{locationId}`）
-3. 调用 `PATCH /api/spools/{spoolId}` `{"location_id": "{locationId}"}`
-4. 访问 `/spool/{spoolId}`
-
-**期望**：
-- 详情页显示「当前位置：货架 1 号」
-
----
-
-### TC-E2E-003：耗材用完后重新入库
-
-**步骤**：
-1. 将 Spool A 的 status 设为 EMPTY（调用 PATCH API）
-2. 访问 `/spool/{spoolAId}`，确认显示「已归档」横幅
-3. 点击「重新入库」
-4. 记录新的 Spool B 的 id
-
-**期望**：
-- Spool B 关联同一 GlobalFilament
-- Spool B status=ACTIVE，location_id=null
-- Spool A 仍存在（status=EMPTY，数据未删除）
-
----
-
-### TC-E2E-004：删除位置后料卷状态
-
-**步骤**：
-1. 创建位置「临时位置」
-2. 将 Spool 的 location_id 设为该位置
-3. 验证 Spool 详情显示「临时位置」
-4. 删除「临时位置」（调用 DELETE API）
-5. 重新查看 Spool 详情
-
-**期望**：
-- Spool 仍存在
-- Spool 的位置显示「暂未分配位置」（location_id 为 null）
-
----
-
-## 9. 边界与异常测试
-
-### TC-EDGE-001：color_hex 为空时 UI 降级
-
-**前置**：创建字典时不填 `color_hex`
-**期望**：
-- 料卷列表、详情页中，颜色色块区域显示灰色占位
-- 系统正常运行，无报错
-
-### TC-EDGE-002：无 Logo 时 UI 降级
-
-**前置**：创建字典时不填 `logo_url`
-**期望**：
-- 详情页不显示 Logo 区域或显示占位图
-- 系统正常运行，无报错
-
-### TC-EDGE-003：料卷无位置时的展示
-
-**前置**：Spool.location_id = null
-**期望**：
-- 料卷列表中位置字段显示「未分配」
-- 料卷详情页位置字段显示「暂未分配位置」
-
-### TC-EDGE-004：字典列表为空
-
-**前置**：数据库中无 GlobalFilament 记录
-**期望**：
-- `/catalog` 显示空状态（如"暂无数据"提示）
-- 不报错、不崩溃
-
-### TC-EDGE-005：料卷列表为空
-
-**前置**：无 ACTIVE 料卷
-**期望**：
-- `/spools` 的「使用中」Tab 显示空状态
-- 不报错、不崩溃
-
-### TC-EDGE-006：同时发送多个 PATCH 请求（并发）
-
-**输入**：对同一 Spool 并发发送两个不同的 location_id 更新
-**期望**：
-- 最终 location_id 为其中一个（SQLite 串行写入保证一致性）
-- 不出现数据损坏
-
-### TC-EDGE-007：超长字符串输入
-
-**输入**：`brand` 字段填入 1000 个字符的字符串
-**期望**：
-- API 层有长度校验，返回 400；或数据库层接受（SQLite TEXT 无长度限制）
-- 不出现 500 内部错误
-
----
-
-## 10. 打印功能测试
-
-### TC-PRINT-001：料卷标签打印页正确渲染
-
-**步骤**：
-1. 访问 `/spool/{id}/print`（该 Spool 有 color_hex 和 logo_url）
-
-**期望**：
-- 页面宽度约为 40mm 对应的像素
-- 左侧显示品牌 Logo、材质名称（色块背景）、打印参数、颜色名
-- 右侧显示二维码
-- 二维码内容为 `{BASE_URL}/spool/{id}`
-
-### TC-PRINT-002：料卷标签打印页（无 color_hex）
-
-**前置**：Spool 关联的 GlobalFilament 无 color_hex
-**步骤**：
-1. 访问 `/spool/{id}/print`
-
-**期望**：
-- 材质名称区域无背景色（或白色背景）
-- 页面正常渲染，无报错
-
-### TC-PRINT-003：料卷标签打印页 color_hex 对比度
-
-**前置**：
-- 测试深色背景：`color_hex: "#1A1A1A"`（应显示白色文字）
-- 测试浅色背景：`color_hex: "#FFFFFF"`（应显示黑色文字）
-
-**期望**：
-- 深色背景时文字为白色
-- 浅色背景时文字为黑色
-
-### TC-PRINT-004：位置标签打印页正确渲染
-
-**步骤**：
-1. 访问 `/location/{id}/print`
-
-**期望**：
-- 显示位置名称（大字体）
-- 显示二维码，内容为 `{BASE_URL}/location/{id}`
-- 页面加载后自动触发打印对话框（`window.print()`）
-
-### TC-PRINT-005：打印页无底部导航
-
-**步骤**：
-1. 访问 `/spool/{id}/print`
-
-**期望**：
-- 页面无底部导航栏
-- 页面无顶部导航栏
-- 仅显示标签内容
-
----
-
-## 测试执行记录模板
-
-| 用例 ID | 测试日期 | 执行人 | 结果 | 备注 |
-|---------|---------|--------|------|------|
-| TC-AUTH-001 | | | Pass/Fail | |
-| TC-AUTH-002 | | | Pass/Fail | |
-| ... | | | | |
-
----
-
-## 已知测试限制
-
-1. **扫码功能**：`html5-qrcode` 要求 HTTPS，本地开发环境无法真实测试，需通过 API 调用模拟位置更新
-2. **打印测试**：CSS `@page` 打印样式需在实际连接热敏打印机的设备上验证
-3. **移动端测试**：需在真实手机浏览器（Chrome for Android / Safari for iOS）上测试大按钮可点击性
+## 11. 与脚本的关系
+
+- 当前脚本：`scripts/test-api.sh`
+  - 默认运行 P0 冒烟集：`bash scripts/test-api.sh`
+  - 完整 API 回归：`bash scripts/test-api.sh --full`
+- 脚本已覆盖：
+  - `material_type` 必填校验
+  - Spool DELETE
+  - Catalog `groupBy` 系列
+  - Location AMS 与默认位置互斥
+  - `POST /api/catalog/brand-rename`（并验证 PATCH=405）
+  - Upload 成功/失败与路径穿越防护

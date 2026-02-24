@@ -9,7 +9,6 @@ interface LocationData {
   id: string;
   name: string;
   type: string;
-  short_code?: string | null;
   is_default: boolean;
   printer_name?: string | null;
   ams_unit?: string | null;
@@ -52,7 +51,6 @@ export default function EditLocationPage() {
         initialValues={{
           name: data.name,
           type: data.type as "shelf" | "printer" | "ams_slot" | "dryer" | "custom",
-          short_code: data.short_code ?? "",
           is_default: data.is_default,
           printer_name: data.printer_name ?? "",
           ams_unit: data.ams_unit ?? "",

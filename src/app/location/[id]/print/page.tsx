@@ -81,11 +81,6 @@ export default async function LocationPrintPage({ params }: Props) {
               >
                 {location.name}
               </div>
-              {location.short_code && (
-                <div style={{ fontSize: "6pt", color: "#999" }}>
-                  #{location.short_code}
-                </div>
-              )}
             </>
           )}
         </div>

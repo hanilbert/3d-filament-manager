@@ -45,7 +45,7 @@ export async function PATCH(
   const { id } = await params;
   try {
     const body = await request.json();
-    const { name, type, short_code, is_default, printer_name, ams_unit, ams_slot } = body;
+    const { name, type, is_default, printer_name, ams_unit, ams_slot } = body;
 
     if (name !== undefined && (!name || !name.trim())) {
       return NextResponse.json({ error: "位置名称不能为空" }, { status: 400 });
@@ -64,7 +64,6 @@ export async function PATCH(
     const data: Record<string, unknown> = {};
     if (name !== undefined) data.name = name.trim();
     if (type !== undefined) data.type = type;
-    if (short_code !== undefined) data.short_code = short_code?.trim() || null;
     if (is_default !== undefined) data.is_default = is_default;
     if (printer_name !== undefined) data.printer_name = printer_name?.trim() || null;
     if (ams_unit !== undefined) data.ams_unit = ams_unit?.trim() || null;

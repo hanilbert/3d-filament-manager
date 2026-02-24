@@ -68,12 +68,13 @@ model GlobalFilament {
   updated_at  DateTime @updatedAt
 
   spools Spool[]
+
+  @@unique([brand, material, color_name])
 }
 
 model Location {
   id           String   @id @default(uuid())
   name         String
-  short_code   String?  @unique
   type         String   @default("custom")
   is_default   Boolean  @default(false)
 
@@ -104,4 +105,8 @@ model Spool {
 
   globalFilament GlobalFilament @relation(fields: [global_filament_id], references: [id], onDelete: Restrict)
   location       Location?      @relation(fields: [location_id], references: [id])
+
+  @@index([global_filament_id])
+  @@index([location_id])
+  @@index([status])
 }

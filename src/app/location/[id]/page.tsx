@@ -15,7 +15,6 @@ interface LocationDetail {
   id: string;
   name: string;
   type: string;
-  short_code?: string | null;
   is_default: boolean;
   printer_name?: string | null;
   ams_unit?: string | null;
@@ -107,7 +106,6 @@ export default function LocationDetailPage() {
             <div>
               <DetailRow label="名称" value={loc.name} />
               <DetailRow label="类型" value={`${typeInfo.icon} ${typeInfo.label}`} />
-              {loc.short_code && <DetailRow label="短代码" value={loc.short_code} />}
               <DetailRow label="默认位置" value={loc.is_default ? "是" : "否"} />
               {loc.type === "ams_slot" && (
                 <>

@@ -9,7 +9,6 @@ interface Location {
   id: string;
   name: string;
   type: string;
-  short_code?: string | null;
   is_default: boolean;
   _count: { spools: number };
 }
@@ -82,7 +81,6 @@ export default function LocationsPage() {
                             </p>
                             <p className="text-xs text-muted-foreground mt-0.5">
                               {loc._count.spools} 卷活跃料卷
-                              {loc.short_code && <span className="ml-2 text-muted-foreground/60">#{loc.short_code}</span>}
                             </p>
                           </div>
                         </div>

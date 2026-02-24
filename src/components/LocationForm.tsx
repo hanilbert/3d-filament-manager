@@ -11,7 +11,6 @@ import { apiFetch } from "@/lib/fetch";
 interface FormValues {
   name: string;
   type: LocationType;
-  short_code: string;
   is_default: boolean;
   printer_name: string;
   ams_unit: string;
@@ -26,7 +25,6 @@ interface LocationFormProps {
 const DEFAULT: FormValues = {
   name: "",
   type: "custom",
-  short_code: "",
   is_default: false,
   printer_name: "",
   ams_unit: "",
@@ -52,7 +50,6 @@ export function LocationForm({ initialValues, locationId }: LocationFormProps) {
       const body = {
         name: values.name,
         type: values.type,
-        short_code: values.short_code || undefined,
         is_default: values.is_default,
         printer_name: values.type === "ams_slot" ? values.printer_name : undefined,
         ams_unit: values.type === "ams_slot" ? values.ams_unit : undefined,
@@ -112,18 +109,6 @@ export function LocationForm({ initialValues, locationId }: LocationFormProps) {
           onChange={(e) => update("name", e.target.value)}
           placeholder="如：防潮箱 A"
           required
-          className="h-12"
-        />
-      </div>
-
-      {/* 短代码 */}
-      <div className="space-y-2">
-        <Label htmlFor="short_code">短代码（选填）</Label>
-        <Input
-          id="short_code"
-          value={values.short_code}
-          onChange={(e) => update("short_code", e.target.value)}
-          placeholder="如：AVsC1N1"
           className="h-12"
         />
       </div>
