@@ -12,6 +12,21 @@ export async function GET(request: NextRequest) {
         _count: {
           select: { spools: { where: { status: "ACTIVE" } } },
         },
+        spools: {
+          where: { status: "ACTIVE" },
+          include: {
+            globalFilament: {
+              select: {
+                brand: true,
+                material: true,
+                color_name: true,
+                color_hex: true,
+                nominal_weight: true,
+              },
+            },
+          },
+          orderBy: { created_at: "desc" },
+        },
       },
       orderBy: { name: "asc" },
     });
