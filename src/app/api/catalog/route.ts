@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
 import { FILAMENT_OPTIONAL_FIELDS } from "@/lib/types";
 import { findSharedBrandLogoUrl } from "@/lib/brand-logo";
+import { parseBodyUpcGtin, parseQueryUpcGtin } from "@/lib/upc-gtin";
 
 const FLAT_SORT_FIELDS = [
   "brand",
@@ -15,6 +16,7 @@ const FLAT_SORT_FIELDS = [
 ] as const;
 
 type FlatSortField = (typeof FLAT_SORT_FIELDS)[number];
+type CatalogOptionalField = Exclude<(typeof FILAMENT_OPTIONAL_FIELDS)[number], "upc_gtin">;
 
 function parseFlatSortField(value: string | null): FlatSortField {
   if (!value) return "created_at";
@@ -57,9 +59,14 @@ export async function GET(request: NextRequest) {
   const brand = searchParams.get("brand") || "";
   const material = searchParams.get("material") || "";
   const materialType = searchParams.get("materialType") || "";
+  const upcGtin = parseQueryUpcGtin(searchParams.get("upc_gtin"));
   const groupBy = searchParams.get("groupBy");
   const sortBy = parseFlatSortField(searchParams.get("sortBy"));
   const sortOrder = parseSortOrder(searchParams.get("sortOrder"));
+
+  if (upcGtin.error) {
+    return NextResponse.json({ error: upcGtin.error }, { status: 400 });
+  }
 
   // 品牌列表模式（去重 brand + logo_url）
   if (groupBy === "brandList") {
@@ -251,6 +258,7 @@ export async function GET(request: NextRequest) {
         brand ? { brand: { contains: brand } } : {},
         material ? { material: { contains: material } } : {},
         materialType ? { material_type: materialType } : {},
+        upcGtin.provided ? { upc_gtin: upcGtin.normalized } : {},
       ],
     },
     include: {
@@ -275,15 +283,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "缺少必填字段" }, { status: 400 });
     }
 
-    const data: Record<string, string> = { brand, material, color_name };
+    const data: Prisma.GlobalFilamentCreateInput = { brand, material, color_name };
     // material_type is required
     const materialType = body.material_type?.trim();
     if (!materialType || materialType === "__custom") {
       return NextResponse.json({ error: "缺少材料字段" }, { status: 400 });
     }
     data.material_type = materialType;
+
+    const upcGtin = parseBodyUpcGtin(body.upc_gtin);
+    if (upcGtin.error) {
+      return NextResponse.json({ error: upcGtin.error }, { status: 400 });
+    }
+    if (upcGtin.provided) {
+      data.upc_gtin = upcGtin.normalized;
+    }
+
     for (const f of FILAMENT_OPTIONAL_FIELDS) {
-      if (body[f]) data[f] = body[f];
+      if (f === "upc_gtin") continue;
+      const value = body[f];
+      if (typeof value === "string" && value) {
+        data[f as CatalogOptionalField] = value;
+      }
     }
 
     if (!data.logo_url) {
@@ -291,8 +312,7 @@ export async function POST(request: NextRequest) {
       if (sharedLogoUrl) data.logo_url = sharedLogoUrl;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const item = await prisma.globalFilament.create({ data: data as any });
+    const item = await prisma.globalFilament.create({ data });
 
     if (item.logo_url) {
       await prisma.globalFilament.updateMany({
@@ -302,7 +322,11 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(item, { status: 201 });
-  } catch {
+  } catch (e: unknown) {
+    const code = (e as { code?: string })?.code;
+    if (code === "P2002") {
+      return NextResponse.json({ error: "UPC/GTIN 已存在" }, { status: 409 });
+    }
     return NextResponse.json({ error: "创建失败" }, { status: 500 });
   }
 }

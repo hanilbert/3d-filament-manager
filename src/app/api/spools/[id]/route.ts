@@ -37,13 +37,23 @@ export async function PATCH(
     for (const key of allowedFields) {
       if (key in body) data[key] = body[key];
     }
-    // Validate metadata size (S-M4)
+    // Validate and handle metadata: allow clearing with null and enforce size on stored string
     if ("metadata" in body) {
-      const meta = typeof body.metadata === "string" ? body.metadata : JSON.stringify(body.metadata ?? "");
-      if (meta.length > 10000) {
-        return NextResponse.json({ error: "metadata 不能超过 10KB" }, { status: 400 });
+      if (body.metadata === null) {
+        data.metadata = null;
+      } else {
+        const metaString =
+          typeof body.metadata === "string"
+            ? body.metadata
+            : JSON.stringify(body.metadata);
+        if (metaString.length > 10000) {
+          return NextResponse.json(
+            { error: "metadata 不能超过 10KB" },
+            { status: 400 }
+          );
+        }
+        data.metadata = metaString;
       }
-      data.metadata = meta;
     }
 
     const spool = await prisma.spool.update({

@@ -23,6 +23,7 @@ export default async function EditCatalogPage({ params }: Props) {
           material_type: item.material_type ?? "",
           material: item.material,
           color_name: item.color_name,
+          upc_gtin: item.upc_gtin ?? "",
           color_hex: item.color_hex ?? "",
           nozzle_temp: item.nozzle_temp ?? "",
           bed_temp: item.bed_temp ?? "",

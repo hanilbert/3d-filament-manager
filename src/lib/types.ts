@@ -1,5 +1,6 @@
 /** All optional fields on GlobalFilament (used for allowedFields, form values, etc.) */
 export const FILAMENT_OPTIONAL_FIELDS = [
+  "upc_gtin",
   "color_hex", "nozzle_temp", "bed_temp", "print_speed", "logo_url",
   "density", "diameter", "nominal_weight", "softening_temp", "chamber_temp",
   "ironing_flow", "ironing_speed", "shrinkage", "empty_spool_weight", "pressure_advance",
@@ -27,6 +28,7 @@ export interface GlobalFilament {
   material: string;
   material_type?: string | null;
   color_name: string;
+  upc_gtin?: string | null;
   color_hex?: string | null;
   nozzle_temp?: string | null;
   bed_temp?: string | null;

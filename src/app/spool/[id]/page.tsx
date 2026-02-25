@@ -1,19 +1,22 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { ReactNode, useCallback, useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ColorSwatch } from "@/components/ColorSwatch";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { DetailKeyValueList } from "@/components/DetailKeyValueList";
+import { DetailMetricGrid } from "@/components/DetailMetricGrid";
+import { DetailSectionCard } from "@/components/DetailSectionCard";
 import { QRScanner } from "@/components/QRScanner";
 import { apiFetch } from "@/lib/fetch";
+import { DetailSectionConfig, getFilamentDetailSections, hasVisibleItems } from "@/lib/filament-detail-sections";
 import { SpoolLabelPrinter } from "./print/spool-label-printer";
-import { ParamSection } from "@/components/ParamSection";
 import { GlobalFilament } from "@/lib/types";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Fan, FlaskConical, Info, ScanLine, Thermometer, Waves, Wind } from "lucide-react";
 
 interface SpoolDetail {
   id: string;
@@ -24,9 +27,23 @@ interface SpoolDetail {
   location: { id: string; name: string } | null;
 }
 
+const sectionIconMap: Record<string, ReactNode> = {
+  basic: <Info className="h-4 w-4" />,
+  technical: <ScanLine className="h-4 w-4" />,
+  temperature: <Thermometer className="h-4 w-4" />,
+  fan: <Fan className="h-4 w-4" />,
+  "first-layer": <Wind className="h-4 w-4" />,
+  "other-layer": <Wind className="h-4 w-4" />,
+  flow: <Waves className="h-4 w-4" />,
+  drying: <FlaskConical className="h-4 w-4" />,
+  "color-data": <ScanLine className="h-4 w-4" />,
+  compatibility: <Info className="h-4 w-4" />,
+};
+
 export default function SpoolDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [spool, setSpool] = useState<SpoolDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [showScanner, setShowScanner] = useState(false);
@@ -45,6 +62,13 @@ export default function SpoolDetailPage() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const message = searchParams.get("statusMsg");
+    if (message) {
+      setStatusMsg(message);
+    }
+  }, [searchParams]);
 
   async function handleScanResult(text: string) {
     setShowScanner(false);
@@ -111,9 +135,22 @@ export default function SpoolDetailPage() {
   }
 
   const { globalFilament: gf, location } = spool;
+  const detailSections = getFilamentDetailSections(gf).filter((section) => hasVisibleItems(section.items));
+
+  function renderSection(section: DetailSectionConfig) {
+    return (
+      <DetailSectionCard key={section.key} title={section.title} icon={sectionIconMap[section.key]}>
+        {section.layout === "metric" ? (
+          <DetailMetricGrid items={section.items} columns={section.columns} />
+        ) : (
+          <DetailKeyValueList items={section.items} />
+        )}
+      </DetailSectionCard>
+    );
+  }
 
   return (
-    <div className="mx-auto max-w-lg md:max-w-4xl">
+    <div className="mx-auto max-w-lg md:max-w-6xl">
       {/* 顶栏 */}
       <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
         <button onClick={() => router.back()} className="text-muted-foreground">
@@ -139,191 +176,83 @@ export default function SpoolDetailPage() {
         </div>
       )}
 
-      <div className="p-4 space-y-4">
-        {/* Logo + 品牌信息 */}
-        <div className="flex items-center gap-4">
-          {gf.logo_url ? (
-            <div className="w-16 h-16 relative flex-shrink-0">
-              <Image
-                src={gf.logo_url}
-                alt={gf.brand}
-                fill
-                className="object-contain rounded-lg"
-                unoptimized
-              />
-            </div>
-          ) : (
-            <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center text-2xl font-bold text-muted-foreground flex-shrink-0">
-              {gf.brand[0]}
-            </div>
-          )}
-          <div>
-            <p className="font-bold text-lg">{gf.brand}</p>
-            <p className="text-muted-foreground">{gf.material}</p>
-          </div>
-        </div>
-
-        {/* 颜色信息 */}
-        <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-          <ColorSwatch colorHex={gf.color_hex} size="lg" />
-          <div>
-            <p className="text-xs text-muted-foreground">颜色</p>
-            <p className="font-medium text-sm">{gf.color_name}</p>
-          </div>
-        </div>
-
-        {/* 打印参数 */}
-        <ParamSection title="打印参数" items={[
-          { label: "喷嘴温度", value: gf.nozzle_temp },
-          { label: "热床温度", value: gf.bed_temp },
-          { label: "打印速度", value: gf.print_speed },
-        ]} />
-
-        {/* 技术参数 */}
-        <ParamSection title="技术参数" items={[
-          { label: "密度", value: gf.density },
-          { label: "直径", value: gf.diameter },
-          { label: "标称重量", value: gf.nominal_weight },
-          { label: "软化温度", value: gf.softening_temp },
-          { label: "腔体温度", value: gf.chamber_temp },
-          { label: "熨烫流量", value: gf.ironing_flow },
-          { label: "熨烫速度", value: gf.ironing_speed },
-          { label: "收缩率", value: gf.shrinkage },
-          { label: "空卷重量", value: gf.empty_spool_weight },
-          { label: "压力提前 K", value: gf.pressure_advance },
-        ]} />
-
-        {/* 风扇速度 */}
-        <ParamSection title="风扇速度" items={[
-          { label: "最小风扇", value: gf.fan_min },
-          { label: "最大风扇", value: gf.fan_max },
-        ]} />
-
-        {/* 首层速度 */}
-        <ParamSection title="首层速度" items={[
-          { label: "墙速度", value: gf.first_layer_walls },
-          { label: "填充速度", value: gf.first_layer_infill },
-          { label: "外墙速度", value: gf.first_layer_outer_wall },
-          { label: "顶面速度", value: gf.first_layer_top_surface },
-        ]} />
-
-        {/* 其他层速度 */}
-        <ParamSection title="其他层速度" items={[
-          { label: "墙速度", value: gf.other_layers_walls },
-          { label: "填充速度", value: gf.other_layers_infill },
-          { label: "外墙速度", value: gf.other_layers_outer_wall },
-          { label: "顶面速度", value: gf.other_layers_top_surface },
-        ]} />
-
-        {/* 色彩数据 */}
-        <ParamSection title="色彩数据" items={[
-          { label: "实测 RGB", value: gf.measured_rgb },
-          { label: "最高投票 TD", value: gf.top_voted_td },
-          { label: "TD 投票数", value: gf.num_td_votes },
-        ]} />
-
-        {/* 流量特性 */}
-        <ParamSection title="流量特性" items={[
-          { label: "最大体积速度", value: gf.max_volumetric_speed },
-          { label: "流量比", value: gf.flow_ratio },
-        ]} />
-
-        {/* 干燥信息 */}
-        <ParamSection title="干燥信息" items={[
-          { label: "干燥温度", value: gf.drying_temp },
-          { label: "干燥时间", value: gf.dry_time },
-        ]} />
-
-        {/* 兼容性 */}
-        <ParamSection title="兼容性" items={[
-          { label: "AMS 兼容性", value: gf.ams_compatibility },
-          { label: "适用热床板", value: gf.build_plates },
-        ]} />
-
-        {/* 当前位置 */}
-        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-          <div>
-            <p className="text-xs text-muted-foreground">当前位置</p>
-            <p className="font-medium text-sm mt-0.5">
-              {location ? location.name : "暂未分配位置"}
-            </p>
-          </div>
-        </div>
-
-        {/* 入库时间 */}
-        <p className="text-xs text-muted-foreground text-center">
-          入库时间：{new Date(spool.created_at).toLocaleString("zh-CN")}
-        </p>
-
-        {/* 操作按钮 */}
-        <div className="space-y-3 pt-2">
-          {spool.status === "ACTIVE" ? (
-            <>
-              <Button
-                className="w-full h-14 text-base"
-                variant="outline"
-                onClick={() => setShowScanner(!showScanner)}
-              >
-                {showScanner ? "关闭扫码" : "修改位置"}
-              </Button>
-
-              {showScanner && (
-                <QRScanner
-                  onResult={handleScanResult}
-                  onClose={() => setShowScanner(false)}
-                />
+      <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
+        <DetailSectionCard title="料卷概览" className="md:col-span-2">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              {gf.logo_url ? (
+                <div className="relative h-16 w-16 flex-shrink-0">
+                  <Image src={gf.logo_url} alt={gf.brand} fill className="rounded-lg object-contain" unoptimized />
+                </div>
+              ) : (
+                <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-muted text-2xl font-bold text-muted-foreground">
+                  {gf.brand[0]}
+                </div>
               )}
+              <div>
+                <p className="text-lg font-bold">{gf.brand}</p>
+                <p className="text-sm text-muted-foreground">{[gf.material_type, gf.material].filter(Boolean).join(" · ")}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-lg bg-muted/40 px-3 py-2.5">
+              <ColorSwatch colorHex={gf.color_hex} size="lg" />
+              <div>
+                <p className="text-xs text-muted-foreground">颜色</p>
+                <p className="text-sm font-semibold">{gf.color_name}</p>
+                {gf.color_hex ? <p className="text-xs text-muted-foreground">{gf.color_hex}</p> : null}
+              </div>
+            </div>
+          </div>
+        </DetailSectionCard>
 
-              <Button
-                className="w-full h-14 text-base"
-                variant="outline"
-                onClick={() => setShowLabelPrinter(!showLabelPrinter)}
-              >
-                {showLabelPrinter ? "关闭标签预览" : "标签预览"}
-              </Button>
+        <DetailSectionCard title="料卷信息">
+          <DetailKeyValueList
+            items={[
+              { label: "状态", value: spool.status === "ACTIVE" ? "使用中" : "已归档" },
+              { label: "当前位置", value: location ? location.name : "暂未分配位置" },
+              { label: "入库时间", value: new Date(spool.created_at).toLocaleString("zh-CN") },
+            ]}
+          />
+        </DetailSectionCard>
 
-              {showLabelPrinter && spool && (
-                <SpoolLabelPrinter
-                  globalFilament={spool.globalFilament}
-                  qrUrl={`${window.location.origin}/spool/${id}`}
-                />
-              )}
+        {detailSections.map((section) => renderSection(section))}
 
-              <Button
-                className="w-full h-14 text-base"
-                variant="destructive"
-                onClick={() => setShowConfirm(true)}
-              >
-                标记为已用完
-              </Button>
+        <DetailSectionCard title="操作" className="md:col-span-2">
+          <div className="space-y-3">
+            {spool.status === "ACTIVE" ? (
+              <>
+                <Button className="h-12 w-full text-base" variant="outline" onClick={() => setShowScanner(!showScanner)}>
+                  {showScanner ? "关闭扫码" : "修改位置"}
+                </Button>
+                {showScanner ? <QRScanner onResult={handleScanResult} onClose={() => setShowScanner(false)} /> : null}
 
-              <Button
-                className="w-full h-14 text-base"
-                variant="outline"
-                onClick={() => setShowDeleteConfirm(true)}
-              >
-                删除料卷
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                className="w-full h-14 text-base"
-                onClick={handleRestock}
-              >
-                重新入库
-              </Button>
+                <Button className="h-12 w-full text-base" variant="outline" onClick={() => setShowLabelPrinter(!showLabelPrinter)}>
+                  {showLabelPrinter ? "关闭标签预览" : "标签预览"}
+                </Button>
+                {showLabelPrinter && spool ? (
+                  <SpoolLabelPrinter globalFilament={spool.globalFilament} qrUrl={`${window.location.origin}/spool/${id}`} />
+                ) : null}
 
-              <Button
-                className="w-full h-14 text-base"
-                variant="outline"
-                onClick={() => setShowDeleteConfirm(true)}
-              >
-                删除料卷
-              </Button>
-            </>
-          )}
-        </div>
+                <Button className="h-12 w-full text-base" variant="destructive" onClick={() => setShowConfirm(true)}>
+                  标记为已用完
+                </Button>
+
+                <Button className="h-12 w-full text-base" variant="outline" onClick={() => setShowDeleteConfirm(true)}>
+                  删除料卷
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button className="h-12 w-full text-base" onClick={handleRestock}>
+                  重新入库
+                </Button>
+                <Button className="h-12 w-full text-base" variant="outline" onClick={() => setShowDeleteConfirm(true)}>
+                  删除料卷
+                </Button>
+              </>
+            )}
+          </div>
+        </DetailSectionCard>
       </div>
 
       <ConfirmDialog

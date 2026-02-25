@@ -73,22 +73,19 @@ export function SpoolLabelPrinter({ globalFilament: gf, qrUrl }: SpoolLabelPrint
 
   // 4 slots, each holds a param key or "_none"
   const [slots, setSlots] = useState<string[]>(() => {
-    return DEFAULT_SLOTS.map((k) =>
+    const defaults = DEFAULT_SLOTS.map((k) =>
       availableParams.some((p) => p.key === k) ? k : "_none"
     );
-  });
-
-  useEffect(() => {
+    if (typeof window === "undefined") return defaults;
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const keys: string[] = JSON.parse(stored);
-        // Pad to MAX_SLOTS
-        const padded = Array.from({ length: MAX_SLOTS }, (_, i) => keys[i] ?? "_none");
-        setSlots(padded);
-      }
-    } catch {}
-  }, []);
+      if (!stored) return defaults;
+      const keys: string[] = JSON.parse(stored);
+      return Array.from({ length: MAX_SLOTS }, (_, i) => keys[i] ?? "_none");
+    } catch {
+      return defaults;
+    }
+  });
 
   useEffect(() => {
     try {
@@ -234,9 +231,7 @@ export function SpoolLabelPrinter({ globalFilament: gf, qrUrl }: SpoolLabelPrint
             {/* Brand: logo if available, text fallback */}
             {gf.logo_url ? (
               <foreignObject x={PAD} y={LOGO_Y} width={LOGO_W} height={LOGO_H}>
-                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 <div
-                  {...{ xmlns: "http://www.w3.org/1999/xhtml" } as any}
                   style={{ width: "100%", height: "100%", display: "flex", alignItems: "center" }}
                 >
                   <img
@@ -260,8 +255,7 @@ export function SpoolLabelPrinter({ globalFilament: gf, qrUrl }: SpoolLabelPrint
 
             {/* QR Code (top-right) */}
             <foreignObject x={QR_X} y={QR_Y} width={QR_SIZE} height={QR_SIZE}>
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              <div {...{ xmlns: "http://www.w3.org/1999/xhtml" } as any} style={{ width: QR_SIZE, height: QR_SIZE, background: "#fff" }}>
+              <div style={{ width: QR_SIZE, height: QR_SIZE, background: "#fff" }}>
                 <QRCodeSVG value={qrUrl} size={QR_SIZE} level="M" />
               </div>
             </foreignObject>
@@ -274,9 +268,7 @@ export function SpoolLabelPrinter({ globalFilament: gf, qrUrl }: SpoolLabelPrint
 
             {/* Parameters — rendered with LXGW font via foreignObject */}
             <foreignObject x={PAD} y={PARAM_AREA_TOP} width={VB_W - PAD * 2} height={PARAM_AREA_H}>
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               <div
-                {...{ xmlns: "http://www.w3.org/1999/xhtml" } as any}
                 className={lxgwFont.className}
                 style={{
                   width: "100%",

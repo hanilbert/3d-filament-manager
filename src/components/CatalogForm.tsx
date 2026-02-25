@@ -249,7 +249,6 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
         color_name: values.color_name,
       };
       const optionalKeys: (keyof FormValues)[] = [
-        "upc_gtin",
         "color_hex", "logo_url", "nozzle_temp", "bed_temp", "print_speed",
         "density", "diameter", "nominal_weight", "softening_temp", "chamber_temp",
         "ironing_flow", "ironing_speed", "shrinkage", "empty_spool_weight", "pressure_advance",
@@ -264,6 +263,7 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
       for (const k of optionalKeys) {
         body[k] = values[k] || undefined;
       }
+      body.upc_gtin = values.upc_gtin.trim() ? values.upc_gtin : "";
 
       if (catalogId) {
         await apiFetch(`/api/catalog/${catalogId}`, {

@@ -8,16 +8,17 @@ datasource db {
 }
 
 model GlobalFilament {
-  id            String   @id @default(uuid())
+  id            String  @id @default(uuid())
   brand         String
   material      String
   material_type String?
   color_name    String
-  color_hex   String?
-  nozzle_temp String?
-  bed_temp    String?
-  print_speed String?
-  logo_url    String?
+  upc_gtin      String? @unique
+  color_hex     String?
+  nozzle_temp   String?
+  bed_temp      String?
+  print_speed   String?
+  logo_url      String?
 
   // Technical Details
   density            String?
@@ -48,9 +49,9 @@ model GlobalFilament {
   other_layers_top_surface String?
 
   // Tested Color Data
-  measured_rgb  String?
-  top_voted_td  String?
-  num_td_votes  String?
+  measured_rgb String?
+  top_voted_td String?
+  num_td_votes String?
 
   // Flow Characteristics
   max_volumetric_speed String?
@@ -64,8 +65,8 @@ model GlobalFilament {
   ams_compatibility String?
   build_plates      String?
 
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   spools Spool[]
 
@@ -73,18 +74,18 @@ model GlobalFilament {
 }
 
 model Location {
-  id           String   @id @default(uuid())
-  name         String
-  type         String   @default("custom")
-  is_default   Boolean  @default(false)
+  id         String  @id @default(uuid())
+  name       String
+  type       String  @default("custom")
+  is_default Boolean @default(false)
 
   // AMS Slot 专用字段
   printer_name String?
   ams_unit     String?
   ams_slot     String?
 
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   spools Spool[]
 }

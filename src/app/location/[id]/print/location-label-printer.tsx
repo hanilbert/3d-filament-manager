@@ -173,9 +173,7 @@ export function LocationLabelPrinter({ location, qrUrl }: LocationLabelPrinterPr
 
             {/* QR Code (bottom-right) */}
             <foreignObject x={QR_X} y={QR_Y} width={QR_SIZE} height={QR_SIZE}>
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               <div
-                {...{ xmlns: "http://www.w3.org/1999/xhtml" } as any}
                 style={{ width: QR_SIZE, height: QR_SIZE, background: "#fff" }}
               >
                 <QRCodeSVG value={qrUrl} size={QR_SIZE} level="M" />

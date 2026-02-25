@@ -6,10 +6,13 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ColorSwatch } from "@/components/ColorSwatch";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { DetailRow } from "@/components/DetailRow";
+import { DetailKeyValueList } from "@/components/DetailKeyValueList";
+import { DetailMetricGrid } from "@/components/DetailMetricGrid";
+import { DetailSectionCard } from "@/components/DetailSectionCard";
 import { apiFetch } from "@/lib/fetch";
 import { getLocationType } from "@/lib/location-types";
 import { LocationLabelPrinter } from "./print/location-label-printer";
+import { ArrowLeft, ChevronRight } from "lucide-react";
 
 interface LocationDetail {
   id: string;
@@ -67,13 +70,11 @@ export default function LocationDetailPage() {
   const typeInfo = getLocationType(loc.type);
 
   return (
-    <div className="mx-auto max-w-lg md:max-w-4xl">
+    <div className="mx-auto max-w-lg md:max-w-6xl">
       {/* 顶部 */}
       <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
         <button onClick={() => router.back()} className="text-muted-foreground">
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
+          <ArrowLeft className="h-5 w-5" />
         </button>
         <h1 className="text-lg font-semibold flex-1 truncate">{loc.name}</h1>
       </div>
@@ -82,54 +83,39 @@ export default function LocationDetailPage() {
         {/* 左列 */}
         <div className="space-y-4">
           {/* 料卷状态卡片 */}
-          <div className="bg-card border border-border rounded-lg p-4">
-            <p className="text-sm font-medium text-muted-foreground mb-3">
-              料卷状态
-            </p>
-            <div className="flex items-center gap-3">
-              <span className="text-3xl">{typeInfo.icon}</span>
-              <div>
-                <p className="text-2xl font-bold">{loc.spools.length}</p>
-                <p className="text-xs text-muted-foreground">卷活跃料卷</p>
-              </div>
-            </div>
-          </div>
+          <DetailSectionCard title="料卷状态">
+            <DetailMetricGrid
+              columns={2}
+              items={[
+                { label: "位置类型", value: `${typeInfo.icon} ${typeInfo.label}` },
+                { label: "活跃料卷", value: `${loc.spools.length} 卷` },
+              ]}
+            />
+          </DetailSectionCard>
 
           {/* 位置详情卡片 */}
-          <div className="bg-card border border-border rounded-lg p-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-medium text-muted-foreground">位置详情</p>
+          <DetailSectionCard title="位置详情">
+            <div className="mb-3 flex items-center justify-end">
               <Link href={`/location/${id}/edit`} className="text-sm text-primary">
                 编辑
               </Link>
             </div>
-            <div>
-              <DetailRow label="名称" value={loc.name} />
-              <DetailRow label="类型" value={`${typeInfo.icon} ${typeInfo.label}`} />
-              <DetailRow label="默认位置" value={loc.is_default ? "是" : "否"} />
-              {loc.type === "ams_slot" && (
-                <>
-                  <DetailRow label="打印机" value={loc.printer_name} />
-                  <DetailRow label="AMS 单元" value={loc.ams_unit} />
-                  <DetailRow label="AMS 插槽" value={loc.ams_slot} />
-                </>
-              )}
-              <DetailRow
-                label="创建时间"
-                value={new Date(loc.created_at).toLocaleDateString("zh-CN")}
-              />
-              <DetailRow
-                label="更新时间"
-                value={new Date(loc.updated_at).toLocaleDateString("zh-CN")}
-              />
-            </div>
-          </div>
+            <DetailKeyValueList
+              items={[
+                { label: "名称", value: loc.name },
+                { label: "类型", value: `${typeInfo.icon} ${typeInfo.label}` },
+                { label: "默认位置", value: loc.is_default ? "是" : "否" },
+                { label: "打印机", value: loc.type === "ams_slot" ? loc.printer_name : null },
+                { label: "AMS 单元", value: loc.type === "ams_slot" ? loc.ams_unit : null },
+                { label: "AMS 插槽", value: loc.type === "ams_slot" ? loc.ams_slot : null },
+                { label: "创建时间", value: new Date(loc.created_at).toLocaleDateString("zh-CN") },
+                { label: "更新时间", value: new Date(loc.updated_at).toLocaleDateString("zh-CN") },
+              ]}
+            />
+          </DetailSectionCard>
 
           {/* 料卷列表 */}
-          <div className="bg-card border border-border rounded-lg p-4">
-            <p className="text-sm font-medium text-muted-foreground mb-3">
-              此位置的料卷（{loc.spools.length} 卷）
-            </p>
+          <DetailSectionCard title={`此位置的料卷（${loc.spools.length} 卷）`}>
             {loc.spools.length === 0 ? (
               <p className="text-center text-muted-foreground py-4 text-sm">暂无料卷</p>
             ) : (
@@ -146,22 +132,19 @@ export default function LocationDetailPage() {
                           {s.globalFilament.color_name}
                         </p>
                       </div>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-muted-foreground flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                      </svg>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     </div>
                   </Link>
                 ))}
               </div>
             )}
-          </div>
+          </DetailSectionCard>
         </div>
 
         {/* 右列 */}
         <div className="space-y-4">
           {/* QR 标签卡片 */}
-          <div className="bg-card border border-border rounded-lg p-4">
-            <p className="text-sm font-medium text-muted-foreground mb-3">QR 标签</p>
+          <DetailSectionCard title="QR 标签">
             <div className="bg-muted/30 rounded-lg p-4 flex items-center justify-center">
               <div className="text-center">
                 <span className="text-4xl block mb-2">{typeInfo.icon}</span>
@@ -180,7 +163,7 @@ export default function LocationDetailPage() {
             >
               {showLabelPrinter ? "关闭标签预览" : "标签预览"}
             </Button>
-          </div>
+          </DetailSectionCard>
 
           {showLabelPrinter && loc && (
             <LocationLabelPrinter
@@ -190,13 +173,15 @@ export default function LocationDetailPage() {
           )}
 
           {/* 危险操作 */}
-          <Button
-            variant="destructive"
-            className="w-full h-12"
-            onClick={() => setShowDeleteConfirm(true)}
-          >
-            删除位置
-          </Button>
+          <DetailSectionCard title="危险操作">
+            <Button
+              variant="destructive"
+              className="w-full h-12"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              删除位置
+            </Button>
+          </DetailSectionCard>
         </div>
       </div>
 
