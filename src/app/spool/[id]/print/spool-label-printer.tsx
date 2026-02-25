@@ -16,8 +16,10 @@ const lxgwFont = localFont({
 
 // --- Types ---
 
+type FilamentFields = Omit<GlobalFilament, "id" | "created_at">;
+
 interface LabelParam {
-  key: keyof GlobalFilament;
+  key: keyof FilamentFields;
   label: string;
   category: string;
   defaultOn: boolean;
@@ -54,12 +56,12 @@ const STORAGE_KEY = "spool-label-selected-params";
 // --- Component ---
 
 interface SpoolLabelPrinterProps {
-  globalFilament: GlobalFilament;
+  globalFilament: Omit<GlobalFilament, "id" | "created_at">;
   qrUrl: string;
 }
 
 const MAX_SLOTS = 4;
-const DEFAULT_SLOTS: (keyof GlobalFilament)[] = ["color_name", "nozzle_temp", "bed_temp", "print_speed"];
+const DEFAULT_SLOTS: (keyof FilamentFields)[] = ["color_name", "nozzle_temp", "bed_temp", "print_speed"];
 
 export function SpoolLabelPrinter({ globalFilament: gf, qrUrl }: SpoolLabelPrinterProps) {
   const labelRef = useRef<HTMLDivElement>(null);

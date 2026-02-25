@@ -1,24 +1,50 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { ReactNode, useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ColorSwatch } from "@/components/ColorSwatch";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { DetailKeyValueList } from "@/components/DetailKeyValueList";
+import { DetailMetricGrid } from "@/components/DetailMetricGrid";
+import { DetailSectionCard } from "@/components/DetailSectionCard";
 import { apiFetch } from "@/lib/fetch";
-import { ParamSection } from "@/components/ParamSection";
+import { DetailSectionConfig, getFilamentDetailSections, hasVisibleItems } from "@/lib/filament-detail-sections";
 import { GlobalFilament } from "@/lib/types";
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ExternalLink, Fan, FlaskConical, Info, ScanLine, Thermometer, Trash2, Waves, Wind } from "lucide-react";
 
 interface CatalogDetail extends GlobalFilament {
   spools: Array<{
     id: string;
     status: string;
+    created_at: string;
+    updated_at: string;
     location: { name: string } | null;
   }>;
 }
+
+function formatDate(value: string): string {
+  return new Date(value).toLocaleDateString("zh-CN");
+}
+
+function shortId(id: string): string {
+  return id.slice(0, 8);
+}
+
+const sectionIconMap: Record<string, ReactNode> = {
+  basic: <Info className="h-4 w-4" />,
+  technical: <ScanLine className="h-4 w-4" />,
+  temperature: <Thermometer className="h-4 w-4" />,
+  fan: <Fan className="h-4 w-4" />,
+  "first-layer": <Wind className="h-4 w-4" />,
+  "other-layer": <Wind className="h-4 w-4" />,
+  flow: <Waves className="h-4 w-4" />,
+  drying: <FlaskConical className="h-4 w-4" />,
+  "color-data": <ScanLine className="h-4 w-4" />,
+  compatibility: <Info className="h-4 w-4" />,
+};
 
 export default function CatalogDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +53,7 @@ export default function CatalogDetailPage() {
   const [loading, setLoading] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [deletingSpoolId, setDeletingSpoolId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -62,13 +89,38 @@ export default function CatalogDetailPage() {
     }
   }
 
+  async function handleDeleteSpool() {
+    if (!deletingSpoolId) return;
+    try {
+      await apiFetch(`/api/spools/${deletingSpoolId}`, { method: "DELETE" });
+      setDeletingSpoolId(null);
+      load();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "删除料卷失败");
+      setDeletingSpoolId(null);
+    }
+  }
+
   if (loading) return <div className="p-4 text-center text-muted-foreground">加载中...</div>;
   if (!item) return <div className="p-4 text-center text-muted-foreground">未找到</div>;
 
   const canDelete = item.spools.length === 0;
+  const detailSections = getFilamentDetailSections(item).filter((section) => hasVisibleItems(section.items));
+
+  function renderSection(section: DetailSectionConfig) {
+    return (
+      <DetailSectionCard key={section.key} title={section.title} icon={sectionIconMap[section.key]}>
+        {section.layout === "metric" ? (
+          <DetailMetricGrid items={section.items} columns={section.columns} />
+        ) : (
+          <DetailKeyValueList items={section.items} />
+        )}
+      </DetailSectionCard>
+    );
+  }
 
   return (
-    <div className="mx-auto max-w-lg md:max-w-4xl">
+    <div className="mx-auto max-w-lg md:max-w-6xl">
       <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
         <button onClick={() => router.back()} className="text-muted-foreground">
           <ArrowLeft className="w-5 h-5" />
@@ -77,130 +129,133 @@ export default function CatalogDetailPage() {
         <Link href={`/catalog/${id}/edit`} className="text-sm text-primary font-medium">编辑</Link>
       </div>
 
-      <div className="p-4 space-y-4">
-        {/* 品牌信息 */}
-        <div className="flex items-center gap-4">
-          {item.logo_url ? (
-            <div className="w-16 h-16 relative flex-shrink-0">
-              <Image src={item.logo_url} alt={item.brand} fill className="object-contain rounded-lg" unoptimized />
+      <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
+        <DetailSectionCard title="耗材概览" className="md:col-span-2">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              {item.logo_url ? (
+                <div className="relative h-16 w-16 flex-shrink-0">
+                  <Image src={item.logo_url} alt={item.brand} fill className="rounded-lg object-contain" unoptimized />
+                </div>
+              ) : (
+                <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-muted text-2xl font-bold text-muted-foreground">
+                  {item.brand[0]}
+                </div>
+              )}
+              <div>
+                <p className="text-lg font-bold">{item.brand}</p>
+                <p className="text-sm text-muted-foreground">{[item.material_type, item.material].filter(Boolean).join(" · ")}</p>
+              </div>
             </div>
+            <div className="flex items-center gap-3 rounded-lg bg-muted/40 px-3 py-2.5">
+              <ColorSwatch colorHex={item.color_hex} size="lg" />
+              <div>
+                <p className="text-xs text-muted-foreground">颜色</p>
+                <p className="text-sm font-semibold">{item.color_name}</p>
+                {item.color_hex ? <p className="text-xs text-muted-foreground">{item.color_hex}</p> : null}
+              </div>
+            </div>
+          </div>
+        </DetailSectionCard>
+
+        {detailSections.map((section) => renderSection(section))}
+
+        <DetailSectionCard title="操作" className="md:col-span-2">
+          <div className="space-y-3">
+            <Button className="h-12 w-full text-base" onClick={handleAddSpool} disabled={adding}>
+              {adding ? "创建中..." : "加入我的料卷"}
+            </Button>
+            {canDelete ? (
+              <Button variant="destructive" className="h-12 w-full" onClick={() => setShowDeleteConfirm(true)}>
+                删除耗材
+              </Button>
+            ) : null}
+          </div>
+        </DetailSectionCard>
+
+        <DetailSectionCard title={`当前活跃料卷（${item.spools.length} 卷）`} className="md:col-span-2">
+          {item.spools.length === 0 ? (
+            <p className="py-2 text-sm text-muted-foreground">暂无活跃料卷</p>
           ) : (
-            <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center text-2xl font-bold text-muted-foreground flex-shrink-0">
-              {item.brand[0]}
-            </div>
-          )}
-          <div>
-            <p className="font-bold text-lg">{item.brand}</p>
-            <p className="text-muted-foreground">{item.material_type}{item.material ? ` · ${item.material}` : ""}</p>
-          </div>
-        </div>
+            <>
+              {/* 桌面端表格 */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left">
+                      <th className="px-3 py-2 font-medium text-muted-foreground">位置</th>
+                      <th className="px-3 py-2 font-medium text-muted-foreground">料卷 ID</th>
+                      <th className="px-3 py-2 font-medium text-muted-foreground">入库时间</th>
+                      <th className="px-3 py-2 font-medium text-muted-foreground">最后更新</th>
+                      <th className="px-3 py-2 font-medium text-muted-foreground text-right">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {item.spools.map((s) => (
+                      <tr key={s.id} className="border-b border-border/50 last:border-0">
+                        <td className="px-3 py-2.5">{s.location?.name ?? "未分配位置"}</td>
+                        <td className="px-3 py-2.5 font-mono text-xs">{shortId(s.id)}</td>
+                        <td className="px-3 py-2.5">{formatDate(s.created_at)}</td>
+                        <td className="px-3 py-2.5">{formatDate(s.updated_at)}</td>
+                        <td className="px-3 py-2.5 text-right">
+                          <div className="inline-flex items-center gap-2">
+                            <Link
+                              href={`/spool/${s.id}`}
+                              className="inline-flex h-7 items-center rounded-md border border-border px-2 text-xs font-medium hover:bg-muted transition-colors"
+                            >
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              查看
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => setDeletingSpoolId(s.id)}
+                              className="inline-flex h-7 items-center rounded-md border border-destructive/40 px-2 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              删除
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-        {/* 颜色 */}
-        <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-          <ColorSwatch colorHex={item.color_hex} size="lg" />
-          <div>
-            <p className="text-xs text-muted-foreground">颜色</p>
-            <p className="font-medium text-sm">{item.color_name}</p>
-            {item.color_hex && <p className="text-xs text-muted-foreground">{item.color_hex}</p>}
-          </div>
-        </div>
-
-        {/* 打印参数 */}
-        <ParamSection title="打印参数" items={[
-          { label: "喷嘴温度", value: item.nozzle_temp },
-          { label: "热床温度", value: item.bed_temp },
-          { label: "打印速度", value: item.print_speed },
-        ]} />
-
-        {/* 技术参数 */}
-        <ParamSection title="技术参数" items={[
-          { label: "密度", value: item.density },
-          { label: "直径", value: item.diameter },
-          { label: "标称重量", value: item.nominal_weight },
-          { label: "软化温度", value: item.softening_temp },
-          { label: "腔体温度", value: item.chamber_temp },
-          { label: "熨烫流量", value: item.ironing_flow },
-          { label: "熨烫速度", value: item.ironing_speed },
-          { label: "收缩率", value: item.shrinkage },
-          { label: "空卷重量", value: item.empty_spool_weight },
-          { label: "压力提前 K", value: item.pressure_advance },
-        ]} />
-
-        {/* 风扇速度 */}
-        <ParamSection title="风扇速度" items={[
-          { label: "最小风扇", value: item.fan_min },
-          { label: "最大风扇", value: item.fan_max },
-        ]} />
-
-        {/* 首层速度 */}
-        <ParamSection title="首层速度" items={[
-          { label: "墙速度", value: item.first_layer_walls },
-          { label: "填充速度", value: item.first_layer_infill },
-          { label: "外墙速度", value: item.first_layer_outer_wall },
-          { label: "顶面速度", value: item.first_layer_top_surface },
-        ]} />
-
-        {/* 其他层速度 */}
-        <ParamSection title="其他层速度" items={[
-          { label: "墙速度", value: item.other_layers_walls },
-          { label: "填充速度", value: item.other_layers_infill },
-          { label: "外墙速度", value: item.other_layers_outer_wall },
-          { label: "顶面速度", value: item.other_layers_top_surface },
-        ]} />
-
-        {/* 色彩数据 */}
-        <ParamSection title="色彩数据" items={[
-          { label: "实测 RGB", value: item.measured_rgb },
-          { label: "最高投票 TD", value: item.top_voted_td },
-          { label: "TD 投票数", value: item.num_td_votes },
-        ]} />
-
-        {/* 流量特性 */}
-        <ParamSection title="流量特性" items={[
-          { label: "最大体积速度", value: item.max_volumetric_speed },
-          { label: "流量比", value: item.flow_ratio },
-        ]} />
-
-        {/* 干燥信息 */}
-        <ParamSection title="干燥信息" items={[
-          { label: "干燥温度", value: item.drying_temp },
-          { label: "干燥时间", value: item.dry_time },
-        ]} />
-
-        {/* 兼容性 */}
-        <ParamSection title="兼容性" items={[
-          { label: "AMS 兼容性", value: item.ams_compatibility },
-          { label: "适用热床板", value: item.build_plates },
-        ]} />
-
-        {/* 加入料卷按钮 */}
-        <Button className="w-full h-14 text-base" onClick={handleAddSpool} disabled={adding}>
-          {adding ? "创建中..." : "加入我的料卷"}
-        </Button>
-
-        {/* 关联料卷列表 */}
-        {item.spools.length > 0 && (
-          <div>
-            <p className="text-sm font-medium text-muted-foreground mb-2">当前活跃料卷（{item.spools.length} 卷）</p>
-            <div className="space-y-2">
-              {item.spools.map((s) => (
-                <Link key={s.id} href={`/spool/${s.id}`}>
-                  <div className="flex items-center justify-between p-3 bg-card border border-border rounded-lg">
-                    <span className="text-sm">{s.location?.name ?? "未分配位置"}</span>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              {/* 移动端卡片 */}
+              <div className="md:hidden space-y-2">
+                {item.spools.map((s) => (
+                  <div key={s.id} className="rounded-lg border border-border bg-background px-3 py-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">{s.location?.name ?? "未分配位置"}</span>
+                      <span className="font-mono text-xs text-muted-foreground">{shortId(s.id)}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      入库：{formatDate(s.created_at)} · 更新：{formatDate(s.updated_at)}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/spool/${s.id}`}
+                        className="inline-flex h-7 items-center rounded-md border border-border px-2 text-xs font-medium hover:bg-muted transition-colors"
+                      >
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        查看
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => setDeletingSpoolId(s.id)}
+                        className="inline-flex h-7 items-center rounded-md border border-destructive/40 px-2 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        删除
+                      </button>
+                    </div>
                   </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 删除按钮 */}
-        {canDelete && (
-          <Button variant="destructive" className="w-full h-12" onClick={() => setShowDeleteConfirm(true)}>
-            删除耗材
-          </Button>
-        )}
+                ))}
+              </div>
+            </>
+          )}
+        </DetailSectionCard>
       </div>
 
       <ConfirmDialog
@@ -210,6 +265,15 @@ export default function CatalogDetailPage() {
         confirmLabel="确认删除"
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteConfirm(false)}
+      />
+
+      <ConfirmDialog
+        open={!!deletingSpoolId}
+        title="删除料卷"
+        description="确认删除此料卷？此操作不可撤销。"
+        confirmLabel="确认删除"
+        onConfirm={handleDeleteSpool}
+        onCancel={() => setDeletingSpoolId(null)}
       />
     </div>
   );

@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
   const sortOrder = parseSortOrder(searchParams.get("sortOrder"));
 
   const spools = await prisma.spool.findMany({
-    where: status ? { status } : {},
+    where: status ? { status: status as "ACTIVE" | "EMPTY" } : {},
     include: {
       globalFilament: {
         select: {

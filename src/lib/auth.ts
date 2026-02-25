@@ -44,7 +44,9 @@ async function hmacSign(data: string, secret: string): Promise<string> {
 async function hmacVerify(data: string, signature: string, secret: string): Promise<boolean> {
   const key = await getHmacKey(secret);
   const sigBytes = fromBase64url(signature);
-  return crypto.subtle.verify("HMAC", key, sigBytes, new TextEncoder().encode(data));
+  const dataBytes = new TextEncoder().encode(data);
+  // @ts-expect-error -- TS 5.x Uint8Array<ArrayBufferLike> vs BufferSource mismatch
+  return crypto.subtle.verify("HMAC", key, sigBytes, dataBytes);
 }
 
 // --- Sync helpers for Node.js runtime (API routes, generateToken) ---

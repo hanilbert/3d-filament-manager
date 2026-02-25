@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
 import { FILAMENT_OPTIONAL_FIELDS } from "@/lib/types";
+import { findSharedBrandLogoUrl } from "@/lib/brand-logo";
 
 const FLAT_SORT_FIELDS = [
   "brand",
@@ -285,7 +286,20 @@ export async function POST(request: NextRequest) {
       if (body[f]) data[f] = body[f];
     }
 
-    const item = await prisma.globalFilament.create({ data });
+    if (!data.logo_url) {
+      const sharedLogoUrl = await findSharedBrandLogoUrl(brand);
+      if (sharedLogoUrl) data.logo_url = sharedLogoUrl;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const item = await prisma.globalFilament.create({ data: data as any });
+
+    if (item.logo_url) {
+      await prisma.globalFilament.updateMany({
+        where: { brand: item.brand },
+        data: { logo_url: item.logo_url },
+      });
+    }
 
     return NextResponse.json(item, { status: 201 });
   } catch {
