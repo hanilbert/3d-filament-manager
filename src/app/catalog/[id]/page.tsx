@@ -13,24 +13,10 @@ import { DetailSectionCard } from "@/components/DetailSectionCard";
 import { apiFetch } from "@/lib/fetch";
 import { DetailSectionConfig, getFilamentDetailSections, hasVisibleItems } from "@/lib/filament-detail-sections";
 import { GlobalFilament } from "@/lib/types";
-import { ArrowLeft, ExternalLink, Fan, FlaskConical, Info, ScanLine, Thermometer, Trash2, Waves, Wind } from "lucide-react";
+import { ArrowLeft, Fan, FlaskConical, Info, ScanLine, Thermometer, Waves, Wind } from "lucide-react";
 
 interface CatalogDetail extends GlobalFilament {
-  spools: Array<{
-    id: string;
-    status: string;
-    created_at: string;
-    updated_at: string;
-    location: { name: string } | null;
-  }>;
-}
-
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString("zh-CN");
-}
-
-function shortId(id: string): string {
-  return id.slice(0, 8);
+  spools: Array<{ id: string }>;
 }
 
 const sectionIconMap: Record<string, ReactNode> = {
@@ -53,7 +39,6 @@ export default function CatalogDetailPage() {
   const [loading, setLoading] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [deletingSpoolId, setDeletingSpoolId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -86,18 +71,6 @@ export default function CatalogDetailPage() {
       router.push("/catalog");
     } catch (err) {
       alert(err instanceof Error ? err.message : "删除失败");
-    }
-  }
-
-  async function handleDeleteSpool() {
-    if (!deletingSpoolId) return;
-    try {
-      await apiFetch(`/api/spools/${deletingSpoolId}`, { method: "DELETE" });
-      setDeletingSpoolId(null);
-      load();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "删除料卷失败");
-      setDeletingSpoolId(null);
     }
   }
 
@@ -173,89 +146,6 @@ export default function CatalogDetailPage() {
           </div>
         </DetailSectionCard>
 
-        <DetailSectionCard title={`当前活跃料卷（${item.spools.length} 卷）`} className="md:col-span-2">
-          {item.spools.length === 0 ? (
-            <p className="py-2 text-sm text-muted-foreground">暂无活跃料卷</p>
-          ) : (
-            <>
-              {/* 桌面端表格 */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left">
-                      <th className="px-3 py-2 font-medium text-muted-foreground">位置</th>
-                      <th className="px-3 py-2 font-medium text-muted-foreground">料卷 ID</th>
-                      <th className="px-3 py-2 font-medium text-muted-foreground">入库时间</th>
-                      <th className="px-3 py-2 font-medium text-muted-foreground">最后更新</th>
-                      <th className="px-3 py-2 font-medium text-muted-foreground text-right">操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {item.spools.map((s) => (
-                      <tr key={s.id} className="border-b border-border/50 last:border-0">
-                        <td className="px-3 py-2.5">{s.location?.name ?? "未分配位置"}</td>
-                        <td className="px-3 py-2.5 font-mono text-xs">{shortId(s.id)}</td>
-                        <td className="px-3 py-2.5">{formatDate(s.created_at)}</td>
-                        <td className="px-3 py-2.5">{formatDate(s.updated_at)}</td>
-                        <td className="px-3 py-2.5 text-right">
-                          <div className="inline-flex items-center gap-2">
-                            <Link
-                              href={`/spool/${s.id}`}
-                              className="inline-flex h-7 items-center rounded-md border border-border px-2 text-xs font-medium hover:bg-muted transition-colors"
-                            >
-                              <ExternalLink className="h-3 w-3 mr-1" />
-                              查看
-                            </Link>
-                            <button
-                              type="button"
-                              onClick={() => setDeletingSpoolId(s.id)}
-                              className="inline-flex h-7 items-center rounded-md border border-destructive/40 px-2 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
-                            >
-                              <Trash2 className="h-3 w-3 mr-1" />
-                              删除
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* 移动端卡片 */}
-              <div className="md:hidden space-y-2">
-                {item.spools.map((s) => (
-                  <div key={s.id} className="rounded-lg border border-border bg-background px-3 py-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">{s.location?.name ?? "未分配位置"}</span>
-                      <span className="font-mono text-xs text-muted-foreground">{shortId(s.id)}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      入库：{formatDate(s.created_at)} · 更新：{formatDate(s.updated_at)}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/spool/${s.id}`}
-                        className="inline-flex h-7 items-center rounded-md border border-border px-2 text-xs font-medium hover:bg-muted transition-colors"
-                      >
-                        <ExternalLink className="h-3 w-3 mr-1" />
-                        查看
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => setDeletingSpoolId(s.id)}
-                        className="inline-flex h-7 items-center rounded-md border border-destructive/40 px-2 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
-                      >
-                        <Trash2 className="h-3 w-3 mr-1" />
-                        删除
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </DetailSectionCard>
       </div>
 
       <ConfirmDialog
@@ -267,14 +157,6 @@ export default function CatalogDetailPage() {
         onCancel={() => setShowDeleteConfirm(false)}
       />
 
-      <ConfirmDialog
-        open={!!deletingSpoolId}
-        title="删除料卷"
-        description="确认删除此料卷？此操作不可撤销。"
-        confirmLabel="确认删除"
-        onConfirm={handleDeleteSpool}
-        onCancel={() => setDeletingSpoolId(null)}
-      />
     </div>
   );
 }

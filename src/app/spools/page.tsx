@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Pencil, ScanLine, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Pencil, ScanLine } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ColorSwatch } from "@/components/ColorSwatch";
 import { Button } from "@/components/ui/button";
@@ -133,7 +133,7 @@ function MobileSpoolList({
   return (
     <div className="border border-border rounded-lg overflow-hidden bg-card">
       {groups.map((group) => (
-        <Link key={group.globalFilamentId} href={`/catalog/${group.globalFilamentId}`}>
+        <Link key={group.globalFilamentId} href={`/spools/filament/${group.globalFilamentId}`}>
           <div className="px-3 py-3 border-b border-border/60 last:border-0 flex items-start gap-3">
             <div className="flex-1 min-w-0 space-y-1.5">
               <div className="flex items-center justify-between gap-2">
@@ -246,7 +246,7 @@ function DesktopSpoolTable({
                   <td className="px-4 py-3 text-right">
                     <div className="inline-flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                       <Link
-                        href={`/catalog/${group.globalFilamentId}`}
+                        href={`/spools/filament/${group.globalFilamentId}`}
                         className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border hover:bg-muted transition-colors"
                         title="查看详情"
                       >
@@ -282,7 +282,7 @@ export default function SpoolsPage() {
   const [activeSortOrder, setActiveSortOrder] = useState<SortOrder>("desc");
   const [emptySortBy, setEmptySortBy] = useState<SortField>("updated_at");
   const [emptySortOrder, setEmptySortOrder] = useState<SortOrder>("desc");
-  const [reloadKey, setReloadKey] = useState(0);
+  const [reloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -428,7 +428,7 @@ export default function SpoolsPage() {
             sortOrder={activeSortOrder}
             onToggleSort={toggleActiveSort}
             empty={<><span>暂无使用中的料卷，</span><Link href="/catalog" className="text-primary underline">去添加</Link></>}
-            onRowClick={(gfId) => router.push(`/catalog/${gfId}`)}
+            onRowClick={(gfId) => router.push(`/spools/filament/${gfId}`)}
           />
 
           <DesktopSpoolTable
@@ -440,7 +440,7 @@ export default function SpoolsPage() {
             sortOrder={emptySortOrder}
             onToggleSort={toggleEmptySort}
             empty={<span>暂无空卷轴</span>}
-            onRowClick={(gfId) => router.push(`/catalog/${gfId}`)}
+            onRowClick={(gfId) => router.push(`/spools/filament/${gfId}`)}
           />
         </div>
       </div>

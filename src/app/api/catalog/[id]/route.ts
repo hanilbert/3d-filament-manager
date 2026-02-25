@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
 import { FILAMENT_ALLOWED_FIELDS } from "@/lib/types";
+import { findSharedBrandLogoUrl } from "@/lib/brand-logo";
+import { parseBodyUpcGtin } from "@/lib/upc-gtin";
 
 export async function GET(
   request: NextRequest,
@@ -15,7 +18,6 @@ export async function GET(
     where: { id },
     include: {
       spools: {
-        where: { status: "ACTIVE" },
         include: { location: true },
         orderBy: { created_at: "desc" },
       },
@@ -23,6 +25,14 @@ export async function GET(
   });
 
   if (!item) return NextResponse.json({ error: "未找到" }, { status: 404 });
+
+  if (!item.logo_url) {
+    const sharedLogoUrl = await findSharedBrandLogoUrl(item.brand, item.id);
+    if (sharedLogoUrl) {
+      return NextResponse.json({ ...item, logo_url: sharedLogoUrl });
+    }
+  }
+
   return NextResponse.json(item);
 }
 
@@ -36,18 +46,59 @@ export async function PATCH(
   const { id } = await params;
   try {
     const body = await request.json();
+    const current = await prisma.globalFilament.findUnique({
+      where: { id },
+      select: { id: true, brand: true, logo_url: true },
+    });
+    if (!current) return NextResponse.json({ error: "未找到" }, { status: 404 });
 
     const data: Record<string, string | null> = {};
     for (const f of FILAMENT_ALLOWED_FIELDS) {
+      if (f === "upc_gtin") continue;
       if (f in body) data[f] = body[f] || null;
+    }
+
+    const upcGtin = parseBodyUpcGtin(body.upc_gtin);
+    if (upcGtin.error) {
+      return NextResponse.json({ error: upcGtin.error }, { status: 400 });
+    }
+    if (upcGtin.provided) {
+      data.upc_gtin = upcGtin.normalized;
+    }
+
+    const targetBrand = data.brand ?? current.brand;
+    const hasLogoInPayload = "logo_url" in data;
+    if (!hasLogoInPayload && !current.logo_url) {
+      const sharedLogoUrl = await findSharedBrandLogoUrl(targetBrand, current.id);
+      if (sharedLogoUrl) data.logo_url = sharedLogoUrl;
+    }
+    if (!hasLogoInPayload && data.brand && data.brand !== current.brand) {
+      const sharedLogoUrl = await findSharedBrandLogoUrl(targetBrand, current.id);
+      if (sharedLogoUrl) data.logo_url = sharedLogoUrl;
     }
 
     const item = await prisma.globalFilament.update({
       where: { id },
       data,
     });
+
+    if (hasLogoInPayload) {
+      await prisma.globalFilament.updateMany({
+        where: { brand: item.brand },
+        data: { logo_url: item.logo_url },
+      });
+    } else if (item.logo_url) {
+      await prisma.globalFilament.updateMany({
+        where: { brand: item.brand, logo_url: null },
+        data: { logo_url: item.logo_url },
+      });
+    }
+
     return NextResponse.json(item);
-  } catch {
+  } catch (e: unknown) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      return NextResponse.json({ error: "UPC/GTIN 已存在" }, { status: 409 });
+    }
     return NextResponse.json({ error: "更新失败" }, { status: 500 });
   }
 }
