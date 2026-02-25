@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Pencil, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Pencil, ScanLine, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ColorSwatch } from "@/components/ColorSwatch";
+import { Button } from "@/components/ui/button";
+import { GlobalScanDialog } from "@/components/GlobalScanDialog";
 import { apiFetch } from "@/lib/fetch";
 
 interface Spool {
@@ -142,7 +144,7 @@ function MobileSpoolList({
               </div>
 
               <p className="text-xs text-muted-foreground truncate">
-                {group.material || "-"} · {group.material_type || "-"}
+                {group.material_type || "-"} · {group.material || "-"}
               </p>
 
               <div className="flex items-center gap-2">
@@ -199,10 +201,10 @@ function DesktopSpoolTable({
                   <SortHeader field="brand" label="品牌" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
                 </th>
                 <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
-                  <SortHeader field="material" label="材料" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
+                  <SortHeader field="material_type" label="材料" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
                 </th>
                 <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
-                  <SortHeader field="material_type" label="类型" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
+                  <SortHeader field="material" label="类型" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
                 </th>
                 <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
                   <SortHeader field="color_name" label="颜色" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
@@ -232,8 +234,8 @@ function DesktopSpoolTable({
                   onClick={() => onRowClick(group.globalFilamentId)}
                 >
                   <td className="px-4 py-3">{group.brand}</td>
-                  <td className="px-4 py-3">{group.material || "-"}</td>
                   <td className="px-4 py-3">{group.material_type || "-"}</td>
+                  <td className="px-4 py-3">{group.material || "-"}</td>
                   <td className="px-4 py-3">{group.color_name}</td>
                   <td className="px-4 py-3">
                     <ColorSwatch colorHex={group.color_hex} size="sm" />
@@ -369,9 +371,19 @@ export default function SpoolsPage() {
     <div className="mx-auto max-w-lg md:max-w-7xl">
       <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-semibold">我的料卷</h1>
-        <Link href="/catalog" className="text-sm text-primary font-medium">
-          + 新增
-        </Link>
+        <div className="flex items-center gap-3">
+          <GlobalScanDialog
+            trigger={(
+              <Button type="button" size="sm" variant="outline" className="h-8 px-3">
+                <ScanLine className="size-3.5" />
+                扫描
+              </Button>
+            )}
+          />
+          <Link href="/catalog" className="text-sm text-primary font-medium">
+            + 新增
+          </Link>
+        </div>
       </div>
 
       <div className="p-4 space-y-6">

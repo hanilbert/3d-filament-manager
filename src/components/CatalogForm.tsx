@@ -19,6 +19,7 @@ interface FormValues {
   material_type: string;
   material: string;
   color_name: string;
+  upc_gtin: string;
   color_hex: string;
   nozzle_temp: string;
   bed_temp: string;
@@ -73,6 +74,7 @@ const DEFAULT: FormValues = {
   material_type: "",
   material: "",
   color_name: "",
+  upc_gtin: "",
   color_hex: "",
   nozzle_temp: "",
   bed_temp: "",
@@ -247,6 +249,7 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
         color_name: values.color_name,
       };
       const optionalKeys: (keyof FormValues)[] = [
+        "upc_gtin",
         "color_hex", "logo_url", "nozzle_temp", "bed_temp", "print_speed",
         "density", "diameter", "nominal_weight", "softening_temp", "chamber_temp",
         "ironing_flow", "ironing_speed", "shrinkage", "empty_spool_weight", "pressure_advance",
@@ -356,7 +359,7 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
           <Input
             value={values.material_type}
             onChange={(e) => update("material_type", e.target.value)}
-            placeholder="输入材料名称，如：ASA"
+            placeholder="输入材料，如：ASA"
             className="h-12 mt-1"
             autoFocus
             required
@@ -365,13 +368,24 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="material">材料类型（选填）</Label>
+        <Label htmlFor="material">类型（选填）</Label>
         <Input id="material" value={values.material} onChange={(e) => update("material", e.target.value)} placeholder="如：Matte、Silk、95A" className="h-12" />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="color_name">颜色名称 *</Label>
         <Input id="color_name" value={values.color_name} onChange={(e) => update("color_name", e.target.value)} placeholder="如：草绿 11500" required className="h-12" />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="upc_gtin">UPC/GTIN（选填）</Label>
+        <Input
+          id="upc_gtin"
+          value={values.upc_gtin}
+          onChange={(e) => update("upc_gtin", e.target.value)}
+          placeholder="如：6971234567890（支持空格或-）"
+          className="h-12"
+        />
       </div>
 
       <div className="space-y-2">

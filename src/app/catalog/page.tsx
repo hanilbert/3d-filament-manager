@@ -64,7 +64,7 @@ export default function CatalogPage() {
         {/* 搜索 + 视图切换 */}
         <div className="flex gap-2">
           <Input
-            placeholder="搜索品牌、材质、颜色..."
+            placeholder="搜索品牌、材料、颜色..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
             className="h-11 flex-1"
@@ -88,7 +88,7 @@ export default function CatalogPage() {
                         {item.brand}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {item.material_type || ""}{item.material ? ` ${item.material}` : ""} · {item.color_name}
+                        {[item.material, item.material_type].filter(Boolean).join(" ")} · {item.color_name}
                       </p>
                     </div>
                     <span className="text-xs text-muted-foreground flex-shrink-0">
@@ -118,7 +118,7 @@ function BrandTable({ brands }: { brands: BrandGroup[] }) {
     );
   }
 
-  const materialTypeCols = ["PLA", "ABS", "ASA", "TPU"];
+  const materialTypeCols = ["PLA", "PETG", "ABS", "ASA", "TPU"];
 
   return (
     <div className="border border-border rounded-lg overflow-x-auto">

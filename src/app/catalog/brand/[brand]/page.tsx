@@ -69,7 +69,7 @@ export default function BrandDetailPage() {
     const groups = new Map<string, GroupedItems>();
     for (const item of items) {
       const materialType = item.material_type?.trim() || "未分类";
-      const material = item.material?.trim() || "未命名材质";
+      const material = item.material?.trim() || "未命名类型";
       const key = `${materialType}__${material}`;
       const existing = groups.get(key);
       if (existing) {
@@ -135,10 +135,10 @@ export default function BrandDetailPage() {
                       <SortHeader field="brand" label="品牌" />
                     </th>
                     <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
-                      <SortHeader field="material" label="材质" />
+                      <SortHeader field="material_type" label="材料" />
                     </th>
                     <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
-                      <SortHeader field="material_type" label="类型" />
+                      <SortHeader field="material" label="类型" />
                     </th>
                     <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
                       <SortHeader field="color_name" label="颜色" />
@@ -160,8 +160,8 @@ export default function BrandDetailPage() {
                         onClick={() => router.push(`/catalog/${item.id}`)}
                       >
                         <td className="px-4 py-3">{item.brand}</td>
-                        <td className="px-4 py-3">{item.material || "-"}</td>
                         <td className="px-4 py-3">{item.material_type || "-"}</td>
+                        <td className="px-4 py-3">{item.material || "-"}</td>
                         <td className="px-4 py-3">{item.color_name}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
