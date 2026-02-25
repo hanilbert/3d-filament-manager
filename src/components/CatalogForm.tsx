@@ -148,9 +148,7 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
   const [error, setError] = useState("");
   const [materialTypes, setMaterialTypes] = useState<string[]>([]);
   const [brandList, setBrandList] = useState<BrandOption[]>([]);
-  const [brandMode, setBrandMode] = useState<"select" | "custom">(
-    initialValues?.brand ? "select" : "select"
-  );
+  const [brandMode, setBrandMode] = useState<"select" | "custom">("select");
   const MATERIAL_PRESETS = [
     "PLA", "PLA+/Pro", "PETG", "ABS", "ABS+", "APLA", "ASA", "ASA+",
     "CoPA", "CPE", "HIPS", "HT-PLA", "PA (Nylon)", "PA12", "PA6", "PA612",
@@ -463,7 +461,7 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
         )}
         <Input
           type="file"
-          accept=".jpg,.jpeg,.png,.webp,.svg"
+          accept=".jpg,.jpeg,.png,.webp"
           onChange={handleLogoUpload}
           disabled={uploading}
           className="h-12"

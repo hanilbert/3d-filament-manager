@@ -7,7 +7,6 @@ const MIME_MAP: Record<string, string> = {
   jpeg: "image/jpeg",
   png: "image/png",
   webp: "image/webp",
-  svg: "image/svg+xml",
 };
 
 export async function GET(
@@ -32,12 +31,6 @@ export async function GET(
       "Content-Type": contentType,
       "Cache-Control": "public, max-age=31536000, immutable",
     };
-
-    // Force SVG download to prevent XSS (S-C3 mitigation for legacy uploads)
-    if (ext === "svg") {
-      headers["Content-Disposition"] = `attachment; filename="${safe}"`;
-      headers["X-Content-Type-Options"] = "nosniff";
-    }
 
     return new NextResponse(buffer, { headers });
   } catch {

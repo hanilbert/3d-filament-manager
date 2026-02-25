@@ -282,7 +282,6 @@ export default function SpoolsPage() {
   const [activeSortOrder, setActiveSortOrder] = useState<SortOrder>("desc");
   const [emptySortBy, setEmptySortBy] = useState<SortField>("updated_at");
   const [emptySortOrder, setEmptySortOrder] = useState<SortOrder>("desc");
-  const [reloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -305,7 +304,7 @@ export default function SpoolsPage() {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -328,7 +327,7 @@ export default function SpoolsPage() {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, []);
 
   function sortGroups(groups: GroupedSpool[], field: SortField, order: SortOrder): GroupedSpool[] {
     return [...groups].sort((a, b) => {

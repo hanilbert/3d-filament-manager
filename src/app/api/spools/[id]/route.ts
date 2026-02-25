@@ -32,6 +32,9 @@ export async function PATCH(
   const { id } = await params;
   try {
     const body = await request.json();
+    if (body.status !== undefined && !["ACTIVE", "EMPTY"].includes(body.status)) {
+      return NextResponse.json({ error: "status 必须为 ACTIVE 或 EMPTY" }, { status: 400 });
+    }
     const allowedFields = ["location_id", "status"];
     const data: Record<string, unknown> = {};
     for (const key of allowedFields) {
