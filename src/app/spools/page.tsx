@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Pencil, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ColorSwatch } from "@/components/ColorSwatch";
 import { apiFetch } from "@/lib/fetch";
@@ -192,14 +192,14 @@ function DesktopSpoolTable({
         <div className="text-center text-muted-foreground py-8 border border-border rounded-lg">{empty}</div>
       ) : (
         <div className="border border-border rounded-lg overflow-x-auto">
-          <table className="w-full min-w-[900px] text-sm">
+          <table className="w-full min-w-[1000px] text-sm">
             <thead>
               <tr className="bg-muted/30 border-b border-border">
                 <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
                   <SortHeader field="brand" label="品牌" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
                 </th>
                 <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
-                  <SortHeader field="material" label="材质" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
+                  <SortHeader field="material" label="材料" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
                 </th>
                 <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
                   <SortHeader field="material_type" label="类型" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
@@ -207,9 +207,10 @@ function DesktopSpoolTable({
                 <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
                   <SortHeader field="color_name" label="颜色" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
                 </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">位置</th>
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">RGB</th>
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">RGB #</th>
                 <th className="text-center px-4 py-3 font-medium whitespace-nowrap">
-                  <SortHeader field="count" label="数量" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
+                  <SortHeader field="count" label="# 线轴" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
                 </th>
                 <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
                   <SortHeader
@@ -220,6 +221,7 @@ function DesktopSpoolTable({
                     onToggle={onToggleSort}
                   />
                 </th>
+                <th className="text-right px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -232,19 +234,31 @@ function DesktopSpoolTable({
                   <td className="px-4 py-3">{group.brand}</td>
                   <td className="px-4 py-3">{group.material || "-"}</td>
                   <td className="px-4 py-3">{group.material_type || "-"}</td>
+                  <td className="px-4 py-3">{group.color_name}</td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <ColorSwatch colorHex={group.color_hex} size="sm" />
-                      <span className="truncate">{group.color_name}</span>
+                    <ColorSwatch colorHex={group.color_hex} size="sm" />
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs">{group.color_hex || "-"}</td>
+                  <td className="px-4 py-3 text-center">{group.count}</td>
+                  <td className="px-4 py-3">{mode === "active" ? formatDate(group.latestCreatedAt) : formatDate(group.latestUpdatedAt)}</td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="inline-flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      <Link
+                        href={`/catalog/${group.globalFilamentId}`}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border hover:bg-muted transition-colors"
+                        title="查看详情"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Link>
+                      <Link
+                        href={`/catalog/${group.globalFilamentId}/edit`}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border hover:bg-muted transition-colors"
+                        title="编辑"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Link>
                     </div>
                   </td>
-                  <td className="px-4 py-3">{group.locationLabel}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
-                      {group.count}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">{mode === "active" ? formatDate(group.latestCreatedAt) : formatDate(group.latestUpdatedAt)}</td>
                 </tr>
               ))}
             </tbody>
