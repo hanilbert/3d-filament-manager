@@ -44,12 +44,8 @@ function LoginPageContent() {
         return;
       }
 
-      const { token, expiresAt } = await res.json();
-
-      // Cookie is now set server-side as HttpOnly (S-H2)
-      // Keep localStorage as fallback for Bearer header in API requests
-      localStorage.setItem("spool_tracker_token", token);
-      localStorage.setItem("spool_tracker_expires", String(expiresAt));
+      const { expiresAt } = await res.json();
+      void expiresAt; // cookie is set server-side as HttpOnly
 
       router.push(from);
     } catch {

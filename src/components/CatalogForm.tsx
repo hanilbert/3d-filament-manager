@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/fetch";
-import { getToken } from "@/lib/fetch";
 import { ChevronDown } from "lucide-react";
 
 interface BrandOption {
@@ -205,7 +204,7 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
       fd.append("file", file);
       const res = await fetch("/api/upload/logo", {
         method: "POST",
-        headers: { Authorization: `Bearer ${getToken()}` },
+        credentials: "same-origin",
         body: fd,
       });
       if (!res.ok) throw new Error("上传失败");

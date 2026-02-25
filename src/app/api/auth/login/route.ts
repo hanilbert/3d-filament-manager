@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     const cookie = `spool_tracker_token=${token}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Lax${secure}`;
 
     return NextResponse.json(
-      { token, expiresAt },
+      { expiresAt },
       { headers: { "Set-Cookie": cookie } }
     );
   } catch {
