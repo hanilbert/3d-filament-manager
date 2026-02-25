@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { ColorSwatch } from "@/components/ColorSwatch";
+import { SortHeader } from "@/components/SortHeader";
 import { apiFetch } from "@/lib/fetch";
 
 interface CatalogItem {
@@ -95,22 +96,6 @@ export default function BrandDetailPage() {
     setSortOrder("asc");
   }
 
-  function SortHeader({ field, label }: { field: SortField; label: string }) {
-    const isActive = sortBy === field;
-    const Icon = !isActive ? ArrowUpDown : sortOrder === "asc" ? ArrowUp : ArrowDown;
-
-    return (
-      <button
-        type="button"
-        onClick={() => toggleSort(field)}
-        className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <span>{label}</span>
-        <Icon className="w-3.5 h-3.5" />
-      </button>
-    );
-  }
-
   return (
     <div className="mx-auto max-w-lg md:max-w-6xl">
       <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
@@ -132,19 +117,19 @@ export default function BrandDetailPage() {
                 <thead>
                   <tr className="bg-muted/30 border-b border-border">
                     <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
-                      <SortHeader field="brand" label="品牌" />
+                      <SortHeader field="brand" label="品牌" sortBy={sortBy} sortOrder={sortOrder} onToggle={toggleSort} />
                     </th>
                     <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
-                      <SortHeader field="material_type" label="材料" />
+                      <SortHeader field="material_type" label="材料" sortBy={sortBy} sortOrder={sortOrder} onToggle={toggleSort} />
                     </th>
                     <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
-                      <SortHeader field="material" label="类型" />
+                      <SortHeader field="material" label="类型" sortBy={sortBy} sortOrder={sortOrder} onToggle={toggleSort} />
                     </th>
                     <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
-                      <SortHeader field="color_name" label="颜色" />
+                      <SortHeader field="color_name" label="颜色" sortBy={sortBy} sortOrder={sortOrder} onToggle={toggleSort} />
                     </th>
                     <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
-                      <SortHeader field="color_hex" label="RGB HEX" />
+                      <SortHeader field="color_hex" label="RGB HEX" sortBy={sortBy} sortOrder={sortOrder} onToggle={toggleSort} />
                     </th>
                     <th className="text-right px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">操作</th>
                   </tr>

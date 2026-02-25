@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Pencil, ScanLine } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Pencil, ScanLine } from "lucide-react";import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ColorSwatch } from "@/components/ColorSwatch";
 import { Button } from "@/components/ui/button";
 import { GlobalScanDialog } from "@/components/GlobalScanDialog";
+import { SortHeader } from "@/components/SortHeader";
 import { apiFetch } from "@/lib/fetch";
+import { formatDate } from "@/lib/utils";
 
 interface Spool {
   id: string;
@@ -78,38 +79,6 @@ function groupSpools(spools: Spool[]): GroupedSpool[] {
 
 type SortField = "brand" | "material" | "material_type" | "color_name" | "count" | "created_at" | "updated_at";
 type SortOrder = "asc" | "desc";
-
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString("zh-CN");
-}
-
-function SortHeader({
-  field,
-  label,
-  sortBy,
-  sortOrder,
-  onToggle,
-}: {
-  field: SortField;
-  label: string;
-  sortBy: SortField;
-  sortOrder: SortOrder;
-  onToggle: (field: SortField) => void;
-}) {
-  const isActive = sortBy === field;
-  const Icon = !isActive ? ArrowUpDown : sortOrder === "asc" ? ArrowUp : ArrowDown;
-
-  return (
-    <button
-      type="button"
-      onClick={() => onToggle(field)}
-      className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-    >
-      <span>{label}</span>
-      <Icon className="w-3.5 h-3.5" />
-    </button>
-  );
-}
 
 function MobileSpoolList({
   mode,

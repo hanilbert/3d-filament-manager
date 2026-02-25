@@ -1,25 +1,23 @@
 "use client";
 
-import { ReactNode, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ColorSwatch } from "@/components/ColorSwatch";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { DetailKeyValueList } from "@/components/DetailKeyValueList";
-import { DetailMetricGrid } from "@/components/DetailMetricGrid";
+import { FilamentDetailSection } from "@/components/FilamentDetailSection";
 import { DetailSectionCard } from "@/components/DetailSectionCard";
 import { apiFetch } from "@/lib/fetch";
-import { DetailSectionConfig, getFilamentDetailSections, hasVisibleItems } from "@/lib/filament-detail-sections";
+import { formatDate } from "@/lib/utils";
+import { getFilamentDetailSections, hasVisibleItems } from "@/lib/filament-detail-sections";
 import { GlobalFilament } from "@/lib/types";
 import {
-  ArrowLeft, ExternalLink, Fan, FlaskConical, Info,
-  ScanLine, Thermometer, Trash2, Waves, Wind,
+  ArrowLeft, ExternalLink, Trash2,
 } from "lucide-react";
 
-interface FilamentWithSpools extends GlobalFilament {
-  spools: Array<{
+interface FilamentWithSpools extends GlobalFilament {  spools: Array<{
     id: string;
     status: string;
     created_at: string;
@@ -28,26 +26,9 @@ interface FilamentWithSpools extends GlobalFilament {
   }>;
 }
 
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString("zh-CN");
-}
-
 function shortId(id: string): string {
   return id.slice(0, 8);
 }
-
-const sectionIconMap: Record<string, ReactNode> = {
-  basic: <Info className="h-4 w-4" />,
-  technical: <ScanLine className="h-4 w-4" />,
-  temperature: <Thermometer className="h-4 w-4" />,
-  fan: <Fan className="h-4 w-4" />,
-  "first-layer": <Wind className="h-4 w-4" />,
-  "other-layer": <Wind className="h-4 w-4" />,
-  flow: <Waves className="h-4 w-4" />,
-  drying: <FlaskConical className="h-4 w-4" />,
-  "color-data": <ScanLine className="h-4 w-4" />,
-  compatibility: <Info className="h-4 w-4" />,
-};
 
 export default function SpoolFilamentPage() {
   const { id } = useParams<{ id: string }>();
@@ -99,18 +80,6 @@ export default function SpoolFilamentPage() {
 
   const title = [item.brand, item.material, item.color_name].filter(Boolean).join(" ");
   const detailSections = getFilamentDetailSections(item).filter((s) => hasVisibleItems(s.items));
-
-  function renderSection(section: DetailSectionConfig) {
-    return (
-      <DetailSectionCard key={section.key} title={section.title} icon={sectionIconMap[section.key]}>
-        {section.layout === "metric" ? (
-          <DetailMetricGrid items={section.items} columns={section.columns} />
-        ) : (
-          <DetailKeyValueList items={section.items} />
-        )}
-      </DetailSectionCard>
-    );
-  }
 
   return (
     <div className="mx-auto max-w-lg md:max-w-6xl">
@@ -252,7 +221,7 @@ export default function SpoolFilamentPage() {
         </DetailSectionCard>
 
         {/* 耗材详情 */}
-        {detailSections.map((section) => renderSection(section))}
+        {detailSections.map((section) => <FilamentDetailSection key={section.key} section={section} />)}
       </div>
 
       <ConfirmDialog

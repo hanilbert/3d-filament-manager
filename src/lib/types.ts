@@ -21,7 +21,12 @@ export const FILAMENT_ALLOWED_FIELDS = [
 
 export type FilamentFieldName = (typeof FILAMENT_ALLOWED_FIELDS)[number];
 
-/** Base GlobalFilament shape — use this instead of redefining in every file */
+/**
+ * GlobalFilament shape for UI components.
+ * NOTE: Prisma generates `GlobalFilament` from `@prisma/client` with DateTime types.
+ * This interface uses string for dates to match JSON serialization from API responses.
+ * New code should prefer `import { GlobalFilament } from '@prisma/client'` for DB operations.
+ */
 export interface GlobalFilament {
   id: string;
   brand: string;

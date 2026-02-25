@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/fetch";
+import { getLocationType } from "@/lib/location-types";
 import { ColorSwatch } from "@/components/ColorSwatch";
 
 interface SpoolInfo {
@@ -158,13 +159,6 @@ export default function LocationsPage() {
     return acc;
   }, {});
 
-  const typeLabels: Record<string, { label: string; icon: string }> = {
-    shelf: { label: "货架", icon: "📦" },
-    printer: { label: "打印机", icon: "🖨️" },
-    dryer: { label: "耗材干燥机", icon: "💨" },
-    custom: { label: "自定义位置", icon: "📍" },
-  };
-
   return (
     <div className="mx-auto max-w-lg md:max-w-4xl">
       <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center justify-between">
@@ -219,7 +213,7 @@ export default function LocationsPage() {
 
             {/* 其他类型位置 */}
             {Object.entries(otherGrouped).map(([type, locs]) => {
-              const info = typeLabels[type] || typeLabels.custom;
+              const info = getLocationType(type);
               return (
                 <section key={type}>
                   <div className="flex items-center gap-2 mb-3">
