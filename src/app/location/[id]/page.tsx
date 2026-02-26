@@ -26,7 +26,7 @@ interface LocationDetail {
   updated_at: string;
   spools: Array<{
     id: string;
-    globalFilament: {
+    filament: {
       brand: string;
       material: string;
       color_name: string;
@@ -82,13 +82,13 @@ export default function LocationDetailPage() {
       <div className="p-4 space-y-4 md:grid md:grid-cols-2 md:gap-6 md:space-y-0">
         {/* 左列 */}
         <div className="space-y-4">
-          {/* 料卷状态卡片 */}
-          <DetailSectionCard title="料卷状态">
+          {/* 线轴状态卡片 */}
+          <DetailSectionCard title="线轴状态">
             <DetailMetricGrid
               columns={2}
               items={[
                 { label: "位置类型", value: `${typeInfo.icon} ${typeInfo.label}` },
-                { label: "活跃料卷", value: `${loc.spools.length} 卷` },
+                { label: "线轴数", value: `${loc.spools.length} 轴` },
               ]}
             />
           </DetailSectionCard>
@@ -114,22 +114,22 @@ export default function LocationDetailPage() {
             />
           </DetailSectionCard>
 
-          {/* 料卷列表 */}
-          <DetailSectionCard title={`此位置的料卷（${loc.spools.length} 卷）`}>
+          {/* 线轴列表 */}
+          <DetailSectionCard title={`此位置的线轴（${loc.spools.length} 轴）`}>
             {loc.spools.length === 0 ? (
-              <p className="text-center text-muted-foreground py-4 text-sm">暂无料卷</p>
+              <p className="text-center text-muted-foreground py-4 text-sm">暂无线轴</p>
             ) : (
               <div className="space-y-2">
                 {loc.spools.map((s) => (
-                  <Link key={s.id} href={`/spool/${s.id}`}>
+                  <Link key={s.id} href={`/spools/${s.id}`}>
                     <div className="flex items-center gap-3 p-3 bg-background border border-border rounded-lg active:bg-muted transition-colors hover:bg-muted/50">
-                      <ColorSwatch colorHex={s.globalFilament.color_hex} size="md" />
+                      <ColorSwatch colorHex={s.filament.color_hex} size="md" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">
-                          {s.globalFilament.brand} {s.globalFilament.material}
+                          {s.filament.brand} {s.filament.material}
                         </p>
                         <p className="text-xs text-muted-foreground truncate">
-                          {s.globalFilament.color_name}
+                          {s.filament.color_name}
                         </p>
                       </div>
                       <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -188,7 +188,7 @@ export default function LocationDetailPage() {
       <ConfirmDialog
         open={showDeleteConfirm}
         title="删除位置"
-        description={`确认删除「${loc.name}」？该位置下 ${loc.spools.length} 卷料卷的位置信息将被清空。`}
+        description={`确认删除「${loc.name}」？该位置下 ${loc.spools.length} 个线轴的位置信息将被清空。`}
         confirmLabel="确认删除"
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteConfirm(false)}

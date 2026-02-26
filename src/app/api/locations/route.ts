@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
         spools: {
           where: { status: "ACTIVE" },
           include: {
-            globalFilament: {
+            filament: {
               select: {
                 brand: true,
                 material: true,

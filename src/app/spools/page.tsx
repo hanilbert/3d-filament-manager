@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Pencil, ScanLine } from "lucide-react";import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ExternalLink, Pencil, ScanLine } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ColorSwatch } from "@/components/ColorSwatch";
 import { Button } from "@/components/ui/button";
 import { GlobalScanDialog } from "@/components/GlobalScanDialog";
@@ -14,13 +15,14 @@ import { formatDate } from "@/lib/utils";
 interface Spool {
   id: string;
   status: "ACTIVE" | "EMPTY";
-  global_filament_id: string;
+  filament_id: string;
   created_at: string;
   updated_at: string;
-  globalFilament: {
+  filament: {
+    id: string;
     brand: string;
     material: string;
-    material_type?: string | null;
+    variant: string;
     color_name: string;
     color_hex?: string | null;
   };
@@ -28,10 +30,10 @@ interface Spool {
 }
 
 interface GroupedSpool {
-  globalFilamentId: string;
+  filamentId: string;
   brand: string;
   material: string;
-  material_type: string | null | undefined;
+  variant: string;
   color_name: string;
   color_hex: string | null | undefined;
   count: number;
@@ -44,21 +46,21 @@ interface GroupedSpool {
 function groupSpools(spools: Spool[]): GroupedSpool[] {
   const map = new Map<string, GroupedSpool>();
   for (const spool of spools) {
-    const key = spool.global_filament_id;
+    const key = spool.filament_id;
     const existing = map.get(key);
     if (existing) {
-      existing.count++;
+      existing.count += 1;
       existing.spools.push(spool);
       if (spool.created_at > existing.latestCreatedAt) existing.latestCreatedAt = spool.created_at;
       if (spool.updated_at > existing.latestUpdatedAt) existing.latestUpdatedAt = spool.updated_at;
     } else {
       map.set(key, {
-        globalFilamentId: key,
-        brand: spool.globalFilament.brand,
-        material: spool.globalFilament.material,
-        material_type: spool.globalFilament.material_type,
-        color_name: spool.globalFilament.color_name,
-        color_hex: spool.globalFilament.color_hex,
+        filamentId: key,
+        brand: spool.filament.brand,
+        material: spool.filament.material,
+        variant: spool.filament.variant,
+        color_name: spool.filament.color_name,
+        color_hex: spool.filament.color_hex,
         count: 1,
         locationLabel: "",
         latestCreatedAt: spool.created_at,
@@ -77,7 +79,7 @@ function groupSpools(spools: Spool[]): GroupedSpool[] {
   return Array.from(map.values());
 }
 
-type SortField = "brand" | "material" | "material_type" | "color_name" | "count" | "created_at" | "updated_at";
+type SortField = "brand" | "material" | "variant" | "color_name" | "count" | "created_at" | "updated_at";
 type SortOrder = "asc" | "desc";
 
 function MobileSpoolList({
@@ -102,18 +104,16 @@ function MobileSpoolList({
   return (
     <div className="border border-border rounded-lg overflow-hidden bg-card">
       {groups.map((group) => (
-        <Link key={group.globalFilamentId} href={`/spools/filament/${group.globalFilamentId}`}>
+        <Link key={group.filamentId} href={`/filaments/${group.filamentId}`}>
           <div className="px-3 py-3 border-b border-border/60 last:border-0 flex items-start gap-3">
             <div className="flex-1 min-w-0 space-y-1.5">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium truncate">{group.brand}</p>
-                <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
-                  ×{group.count}
-                </span>
+                <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium">×{group.count}</span>
               </div>
 
               <p className="text-xs text-muted-foreground truncate">
-                {group.material_type || "-"} · {group.material || "-"}
+                {group.material || "-"} · {group.variant || "-"}
               </p>
 
               <div className="flex items-center gap-2">
@@ -151,7 +151,7 @@ function DesktopSpoolTable({
   sortOrder: SortOrder;
   onToggleSort: (field: SortField) => void;
   empty: React.ReactNode;
-  onRowClick: (globalFilamentId: string) => void;
+  onRowClick: (filamentId: string) => void;
 }) {
   return (
     <section className="space-y-3">
@@ -170,10 +170,10 @@ function DesktopSpoolTable({
                   <SortHeader field="brand" label="品牌" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
                 </th>
                 <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
-                  <SortHeader field="material_type" label="材料" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
+                  <SortHeader field="material" label="材料" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
                 </th>
                 <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
-                  <SortHeader field="material" label="类型" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
+                  <SortHeader field="variant" label="细分" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
                 </th>
                 <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
                   <SortHeader field="color_name" label="颜色" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
@@ -181,16 +181,10 @@ function DesktopSpoolTable({
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">RGB</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">RGB #</th>
                 <th className="text-center px-4 py-3 font-medium whitespace-nowrap">
-                  <SortHeader field="count" label="# 线轴" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
+                  <SortHeader field="count" label="线轴数" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
                 </th>
                 <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
-                  <SortHeader
-                    field={mode === "active" ? "created_at" : "updated_at"}
-                    label={mode === "active" ? "入库时间" : "归档时间"}
-                    sortBy={sortBy}
-                    sortOrder={sortOrder}
-                    onToggle={onToggleSort}
-                  />
+                  <SortHeader field={mode === "active" ? "created_at" : "updated_at"} label={mode === "active" ? "入库时间" : "归档时间"} sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
                 </th>
                 <th className="text-right px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">操作</th>
               </tr>
@@ -198,34 +192,24 @@ function DesktopSpoolTable({
             <tbody>
               {groups.map((group) => (
                 <tr
-                  key={group.globalFilamentId}
+                  key={group.filamentId}
                   className="border-b border-border/70 last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
-                  onClick={() => onRowClick(group.globalFilamentId)}
+                  onClick={() => onRowClick(group.filamentId)}
                 >
                   <td className="px-4 py-3">{group.brand}</td>
-                  <td className="px-4 py-3">{group.material_type || "-"}</td>
                   <td className="px-4 py-3">{group.material || "-"}</td>
+                  <td className="px-4 py-3">{group.variant || "-"}</td>
                   <td className="px-4 py-3">{group.color_name}</td>
-                  <td className="px-4 py-3">
-                    <ColorSwatch colorHex={group.color_hex} size="sm" />
-                  </td>
+                  <td className="px-4 py-3"><ColorSwatch colorHex={group.color_hex} size="sm" /></td>
                   <td className="px-4 py-3 font-mono text-xs">{group.color_hex || "-"}</td>
                   <td className="px-4 py-3 text-center">{group.count}</td>
                   <td className="px-4 py-3">{mode === "active" ? formatDate(group.latestCreatedAt) : formatDate(group.latestUpdatedAt)}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="inline-flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                      <Link
-                        href={`/spools/filament/${group.globalFilamentId}`}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border hover:bg-muted transition-colors"
-                        title="查看详情"
-                      >
+                      <Link href={`/filaments/${group.filamentId}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border hover:bg-muted transition-colors" title="查看详情">
                         <ExternalLink className="h-3.5 w-3.5" />
                       </Link>
-                      <Link
-                        href={`/catalog/${group.globalFilamentId}/edit`}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border hover:bg-muted transition-colors"
-                        title="编辑"
-                      >
+                      <Link href={`/filaments/${group.filamentId}/edit`} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border hover:bg-muted transition-colors" title="编辑">
                         <Pencil className="h-3.5 w-3.5" />
                       </Link>
                     </div>
@@ -258,18 +242,14 @@ export default function SpoolsPage() {
     async function loadActive() {
       setLoadingActive(true);
       try {
-        const data = await apiFetch<Spool[]>(`/api/spools?status=ACTIVE`);
-        if (!cancelled) {
-          setActiveSpools(data);
-        }
+        const data = await apiFetch<Spool[]>("/api/spools?status=ACTIVE");
+        if (!cancelled) setActiveSpools(data);
       } finally {
-        if (!cancelled) {
-          setLoadingActive(false);
-        }
+        if (!cancelled) setLoadingActive(false);
       }
     }
 
-    loadActive();
+    void loadActive();
     return () => {
       cancelled = true;
     };
@@ -281,18 +261,14 @@ export default function SpoolsPage() {
     async function loadEmpty() {
       setLoadingEmpty(true);
       try {
-        const data = await apiFetch<Spool[]>(`/api/spools?status=EMPTY`);
-        if (!cancelled) {
-          setEmptySpools(data);
-        }
+        const data = await apiFetch<Spool[]>("/api/spools?status=EMPTY");
+        if (!cancelled) setEmptySpools(data);
       } finally {
-        if (!cancelled) {
-          setLoadingEmpty(false);
-        }
+        if (!cancelled) setLoadingEmpty(false);
       }
     }
 
-    loadEmpty();
+    void loadEmpty();
     return () => {
       cancelled = true;
     };
@@ -304,7 +280,7 @@ export default function SpoolsPage() {
       switch (field) {
         case "brand": cmp = a.brand.localeCompare(b.brand); break;
         case "material": cmp = (a.material || "").localeCompare(b.material || ""); break;
-        case "material_type": cmp = (a.material_type || "").localeCompare(b.material_type || ""); break;
+        case "variant": cmp = (a.variant || "").localeCompare(b.variant || ""); break;
         case "color_name": cmp = a.color_name.localeCompare(b.color_name); break;
         case "count": cmp = a.count - b.count; break;
         case "created_at": cmp = a.latestCreatedAt.localeCompare(b.latestCreatedAt); break;
@@ -338,19 +314,17 @@ export default function SpoolsPage() {
   return (
     <div className="mx-auto max-w-lg md:max-w-7xl">
       <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-semibold">我的料卷</h1>
+        <h1 className="text-lg font-semibold">我的线轴</h1>
         <div className="flex items-center gap-3">
           <GlobalScanDialog
-            trigger={(
+            trigger={
               <Button type="button" size="sm" variant="outline" className="h-8 px-3">
                 <ScanLine className="size-3.5" />
                 扫描
               </Button>
-            )}
+            }
           />
-          <Link href="/catalog" className="text-sm text-primary font-medium">
-            + 新增
-          </Link>
+          <Link href="/filaments" className="text-sm text-primary font-medium">+ 新增</Link>
         </div>
       </div>
 
@@ -358,30 +332,16 @@ export default function SpoolsPage() {
         <div className="md:hidden">
           <Tabs defaultValue="active">
             <TabsList className="w-full">
-              <TabsTrigger value="active" className="flex-1">
-                使用中 ({activeGroups.length})
-              </TabsTrigger>
-              <TabsTrigger value="empty" className="flex-1">
-                空卷轴 ({emptyGroups.length})
-              </TabsTrigger>
+              <TabsTrigger value="active" className="flex-1">使用中 ({activeGroups.length})</TabsTrigger>
+              <TabsTrigger value="empty" className="flex-1">已归档线轴 ({emptyGroups.length})</TabsTrigger>
             </TabsList>
 
             <TabsContent value="active" className="mt-4">
-              <MobileSpoolList
-                mode="active"
-                loading={loadingActive}
-                groups={activeGroups}
-                empty={<><span>暂无使用中的料卷，</span><Link href="/catalog" className="text-primary underline">去添加</Link></>}
-              />
+              <MobileSpoolList mode="active" loading={loadingActive} groups={activeGroups} empty={<><span>暂无使用中的线轴，</span><Link href="/filaments" className="text-primary underline">去添加</Link></>} />
             </TabsContent>
 
             <TabsContent value="empty" className="mt-4">
-              <MobileSpoolList
-                mode="empty"
-                loading={loadingEmpty}
-                groups={emptyGroups}
-                empty={<span>暂无空卷轴</span>}
-              />
+              <MobileSpoolList mode="empty" loading={loadingEmpty} groups={emptyGroups} empty={<span>暂无已归档线轴</span>} />
             </TabsContent>
           </Tabs>
         </div>
@@ -395,20 +355,20 @@ export default function SpoolsPage() {
             sortBy={activeSortBy}
             sortOrder={activeSortOrder}
             onToggleSort={toggleActiveSort}
-            empty={<><span>暂无使用中的料卷，</span><Link href="/catalog" className="text-primary underline">去添加</Link></>}
-            onRowClick={(gfId) => router.push(`/spools/filament/${gfId}`)}
+            empty={<><span>暂无使用中的线轴，</span><Link href="/filaments" className="text-primary underline">去添加</Link></>}
+            onRowClick={(filamentId) => router.push(`/filaments/${filamentId}`)}
           />
 
           <DesktopSpoolTable
-            title="空卷轴"
+            title="已归档线轴"
             mode="empty"
             loading={loadingEmpty}
             groups={emptyGroups}
             sortBy={emptySortBy}
             sortOrder={emptySortOrder}
             onToggleSort={toggleEmptySort}
-            empty={<span>暂无空卷轴</span>}
-            onRowClick={(gfId) => router.push(`/spools/filament/${gfId}`)}
+            empty={<span>暂无已归档线轴</span>}
+            onRowClick={(filamentId) => router.push(`/filaments/${filamentId}`)}
           />
         </div>
       </div>

@@ -22,8 +22,22 @@ export async function apiFetch<T>(
   }
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: "请求失败" }));
-    throw new Error(err.error ?? `HTTP ${res.status}`);
+    let message = `请求失败（HTTP ${res.status}）`;
+    const contentType = res.headers.get("content-type") ?? "";
+
+    if (contentType.includes("application/json")) {
+      const err = await res.json().catch(() => null);
+      if (err && typeof err.error === "string" && err.error.trim()) {
+        message = err.error;
+      }
+    } else {
+      const text = await res.text().catch(() => "");
+      if (text.trim()) {
+        message = `${message}: ${text.slice(0, 120)}`;
+      }
+    }
+
+    throw new Error(message);
   }
 
   return res.json();

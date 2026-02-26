@@ -172,7 +172,7 @@ export function LocationForm({ initialValues, locationId }: LocationFormProps) {
       <div className="flex items-center justify-between p-3 border border-border rounded-lg">
         <div>
           <p className="text-sm font-medium">设为默认位置</p>
-          <p className="text-xs text-muted-foreground">新料卷将自动分配到此位置</p>
+          <p className="text-xs text-muted-foreground">新线轴将自动分配到此位置</p>
         </div>
         <button
           type="button"

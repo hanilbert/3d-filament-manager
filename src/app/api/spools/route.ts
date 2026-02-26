@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
+import { repairOrphanSpoolFilaments } from "@/lib/data-repair";
 
 const SPOOL_SORT_FIELDS = [
   "brand",
   "material",
-  "material_type",
+  "variant",
   "color_name",
   "status",
   "created_at",
@@ -32,13 +33,13 @@ function getSpoolOrderBy(
 ): Prisma.SpoolOrderByWithRelationInput {
   switch (field) {
     case "brand":
-      return { globalFilament: { brand: order } };
+      return { filament: { brand: order } };
     case "material":
-      return { globalFilament: { material: order } };
-    case "material_type":
-      return { globalFilament: { material_type: order } };
+      return { filament: { material: order } };
+    case "variant":
+      return { filament: { variant: order } };
     case "color_name":
-      return { globalFilament: { color_name: order } };
+      return { filament: { color_name: order } };
     case "status":
       return { status: order };
     case "created_at":
@@ -53,6 +54,7 @@ function getSpoolOrderBy(
 export async function GET(request: NextRequest) {
   const authError = await requireAuth(request);
   if (authError) return authError;
+  await repairOrphanSpoolFilaments();
 
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
@@ -62,11 +64,12 @@ export async function GET(request: NextRequest) {
   const spools = await prisma.spool.findMany({
     where: status ? { status: status as "ACTIVE" | "EMPTY" } : {},
     include: {
-      globalFilament: {
+      filament: {
         select: {
+          id: true,
           brand: true,
           material: true,
-          material_type: true,
+          variant: true,
           color_name: true,
           color_hex: true,
           logo_url: true,
@@ -85,23 +88,23 @@ export async function POST(request: NextRequest) {
   if (authError) return authError;
 
   try {
-    const { global_filament_id } = await request.json();
+    const { filament_id } = await request.json();
 
-    if (!global_filament_id) {
-      return NextResponse.json({ error: "缺少 global_filament_id" }, { status: 400 });
+    if (!filament_id) {
+      return NextResponse.json({ error: "缺少 filament_id" }, { status: 400 });
     }
 
-    const exists = await prisma.globalFilament.findUnique({
-      where: { id: global_filament_id },
+    const exists = await prisma.filament.findUnique({
+      where: { id: filament_id },
     });
     if (!exists) {
-      return NextResponse.json({ error: "耗材字典不存在" }, { status: 404 });
+      return NextResponse.json({ error: "耗材不存在" }, { status: 404 });
     }
 
     const spool = await prisma.spool.create({
-      data: { global_filament_id, status: "ACTIVE" },
+      data: { filament_id, status: "ACTIVE" },
       include: {
-        globalFilament: true,
+        filament: true,
         location: true,
       },
     });

@@ -72,19 +72,19 @@ DROP TABLE "Location";
 ALTER TABLE "new_Location" RENAME TO "Location";
 CREATE TABLE "new_Spool" (
     "id" TEXT NOT NULL PRIMARY KEY,
-    "global_filament_id" TEXT NOT NULL,
+    "filament_id" TEXT NOT NULL,
     "location_id" TEXT,
     "status" TEXT NOT NULL DEFAULT 'ACTIVE',
     "metadata" TEXT,
     "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" DATETIME NOT NULL,
-    CONSTRAINT "Spool_global_filament_id_fkey" FOREIGN KEY ("global_filament_id") REFERENCES "GlobalFilament" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "Spool_filament_id_fkey" FOREIGN KEY ("filament_id") REFERENCES "GlobalFilament" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "Spool_location_id_fkey" FOREIGN KEY ("location_id") REFERENCES "Location" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
-INSERT INTO "new_Spool" ("created_at", "global_filament_id", "id", "location_id", "metadata", "status", "updated_at") SELECT "created_at", "global_filament_id", "id", "location_id", "metadata", "status", CURRENT_TIMESTAMP FROM "Spool";
+INSERT INTO "new_Spool" ("created_at", "filament_id", "id", "location_id", "metadata", "status", "updated_at") SELECT "created_at", "filament_id", "id", "location_id", "metadata", "status", CURRENT_TIMESTAMP FROM "Spool";
 DROP TABLE "Spool";
 ALTER TABLE "new_Spool" RENAME TO "Spool";
-CREATE INDEX "Spool_global_filament_id_idx" ON "Spool"("global_filament_id");
+CREATE INDEX "Spool_filament_id_idx" ON "Spool"("filament_id");
 CREATE INDEX "Spool_location_id_idx" ON "Spool"("location_id");
 CREATE INDEX "Spool_status_idx" ON "Spool"("status");
 PRAGMA foreign_keys=ON;

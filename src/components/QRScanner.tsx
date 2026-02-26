@@ -10,6 +10,18 @@ interface QRScannerProps {
   onStartError?: (message: string) => void;
 }
 
+type ScannerState = "idle" | "starting" | "running" | "stopping" | "stopped";
+
+function isAbortPlayError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message || "";
+  return (
+    error.name === "AbortError" ||
+    msg.includes("play() request was interrupted") ||
+    msg.includes("media was removed from the document")
+  );
+}
+
 export function QRScanner({
   onResult,
   onClose,
@@ -18,33 +30,33 @@ export function QRScanner({
 }: QRScannerProps) {
   const scannerRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
   const onResultRef = useRef(onResult);
-  const stoppingRef = useRef(false);
+  const scannerStateRef = useRef<ScannerState>("idle");
   const id = useId();
   onResultRef.current = onResult;
   const elementId = `qr-scanner-container-${id.replace(/[:]/g, "")}`;
 
-  function safeStop(scanner: import("html5-qrcode").Html5Qrcode | null) {
-    if (!scanner || stoppingRef.current) return;
-    stoppingRef.current = true;
+  async function safeStop(scanner: import("html5-qrcode").Html5Qrcode | null) {
+    if (!scanner) return;
+    if (scannerStateRef.current !== "running") return;
+
+    scannerStateRef.current = "stopping";
     try {
-      const stopPromise = scanner.stop();
-      stopPromise
-        .catch(() => {})
-        .finally(() => {
-          stoppingRef.current = false;
-        });
+      await scanner.stop();
     } catch {
-      stoppingRef.current = false;
+      // 忽略 stop 期间的竞争异常
+    } finally {
+      scannerStateRef.current = "stopped";
     }
   }
 
   useEffect(() => {
-    let html5QrCode: import("html5-qrcode").Html5Qrcode;
+    let html5QrCode: import("html5-qrcode").Html5Qrcode | null = null;
     let isMounted = true;
 
     async function startScanner() {
       const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import("html5-qrcode");
       if (!isMounted) return;
+
       const scannerConfig: import("html5-qrcode").Html5QrcodeFullConfig = {
         verbose: false,
         formatsToSupport:
@@ -59,8 +71,11 @@ export function QRScanner({
               ]
             : [Html5QrcodeSupportedFormats.QR_CODE],
       };
+
       html5QrCode = new Html5Qrcode(elementId, scannerConfig);
       scannerRef.current = html5QrCode;
+      scannerStateRef.current = "starting";
+
       const scanConfig: import("html5-qrcode").Html5QrcodeCameraScanConfig = {
         fps: 10,
         qrbox: { width: 220, height: 220 },
@@ -70,14 +85,19 @@ export function QRScanner({
         await html5QrCode.start(
           { facingMode: "environment" },
           scanConfig,
-          (decodedText) => {
+          async (decodedText) => {
+            await safeStop(html5QrCode);
             onResultRef.current(decodedText);
-            safeStop(html5QrCode);
           },
           undefined
         );
-      } catch {
-        onStartError?.("摄像头不可用或权限未开启");
+        if (isMounted) {
+          scannerStateRef.current = "running";
+        }
+      } catch (error) {
+        if (!isAbortPlayError(error)) {
+          onStartError?.("摄像头不可用或权限未开启");
+        }
       }
     }
 
@@ -85,9 +105,9 @@ export function QRScanner({
 
     return () => {
       isMounted = false;
-      startPromise.catch(() => {});
-      if (scannerRef.current) {
-        safeStop(scannerRef.current);
+      void startPromise.catch(() => {});
+      if (scannerRef.current && scannerStateRef.current === "running") {
+        void safeStop(scannerRef.current);
       }
     };
   }, [elementId, mode, onStartError]);

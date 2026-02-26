@@ -1,4 +1,4 @@
-/** All optional fields on GlobalFilament (used for allowedFields, form values, etc.) */
+/** Filament 可选字段（用于 allowedFields、表单值等） */
 export const FILAMENT_OPTIONAL_FIELDS = [
   "upc_gtin",
   "color_hex", "nozzle_temp", "bed_temp", "print_speed", "logo_url",
@@ -13,25 +13,23 @@ export const FILAMENT_OPTIONAL_FIELDS = [
   "ams_compatibility", "build_plates",
 ] as const;
 
-/** All fields that can be set on GlobalFilament (required + optional) */
+/** Filament 可写字段（必填 + 可选） */
 export const FILAMENT_ALLOWED_FIELDS = [
-  "brand", "material", "material_type", "color_name",
+  "brand", "material", "variant", "color_name",
   ...FILAMENT_OPTIONAL_FIELDS,
 ] as const;
 
 export type FilamentFieldName = (typeof FILAMENT_ALLOWED_FIELDS)[number];
 
 /**
- * GlobalFilament shape for UI components.
- * NOTE: Prisma generates `GlobalFilament` from `@prisma/client` with DateTime types.
- * This interface uses string for dates to match JSON serialization from API responses.
- * New code should prefer `import { GlobalFilament } from '@prisma/client'` for DB operations.
+ * Filament 的前端 JSON 形态。
+ * Prisma 的 DateTime 会在 API JSON 化后转成 string，这里按前端消费定义。
  */
-export interface GlobalFilament {
+export interface Filament {
   id: string;
   brand: string;
   material: string;
-  material_type?: string | null;
+  variant: string;
   color_name: string;
   upc_gtin?: string | null;
   color_hex?: string | null;

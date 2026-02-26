@@ -8,7 +8,7 @@ import { ColorSwatch } from "@/components/ColorSwatch";
 
 interface SpoolInfo {
   id: string;
-  globalFilament: {
+  filament: {
     brand: string;
     material: string;
     color_name: string;
@@ -79,7 +79,7 @@ function buildAmsHierarchy(amsLocations: Location[]): PrinterView[] {
 }
 
 function SpoolCard({ spool, onRemove }: { spool: SpoolInfo; onRemove?: () => void }) {
-  const f = spool.globalFilament;
+  const f = spool.filament;
   return (
     <div className="flex items-center gap-3 p-3 bg-background border border-border rounded-lg">
       <ColorSwatch colorHex={f.color_hex} size="lg" className="rounded-md" />
@@ -97,7 +97,7 @@ function SpoolCard({ spool, onRemove }: { spool: SpoolInfo; onRemove?: () => voi
           </svg>
         </button>
       )}
-      <Link href={`/spool/${spool.id}`} className="text-muted-foreground hover:text-foreground p-1">
+      <Link href={`/spools/${spool.id}`} className="text-muted-foreground hover:text-foreground p-1">
         <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
         </svg>

@@ -6,14 +6,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from "@/components/ui/button";
 import { QRScanner } from "@/components/QRScanner";
 import { apiFetch } from "@/lib/fetch";
-import { isValidUpcGtin, normalizeUpcGtin } from "@/lib/upc-gtin";
+import { parseScanTarget } from "@/lib/scan-target";
 
 interface ActiveSpool {
   id: string;
-  globalFilament: {
+  filament: {
     brand: string;
     material: string;
-    material_type?: string | null;
+    variant?: string | null;
     color_name: string;
   };
   location: { id: string; name: string } | null;
@@ -28,46 +28,6 @@ interface GlobalScanDialogProps {
 }
 
 type ScanStep = "scan" | "pick-spool" | "barcode-not-found";
-
-const UUID_REGEX = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
-const SPOOL_PATH_RE = new RegExp(`/spool/(${UUID_REGEX})(?:[/?#]|$)`, "i");
-const LOCATION_PATH_RE = new RegExp(`/location/(${UUID_REGEX})(?:[/?#]|$)`, "i");
-const UUID_ONLY_RE = new RegExp(`^(${UUID_REGEX})$`, "i");
-
-function parseScanTarget(rawText: string):
-  | { type: "spool"; spoolId: string }
-  | { type: "location"; locationId: string }
-  | { type: "upc_gtin"; upcGtin: string }
-  | { type: "unknown" } {
-  const text = rawText.trim();
-
-  try {
-    const pathname = new URL(text).pathname;
-    const spoolMatch = pathname.match(SPOOL_PATH_RE);
-    if (spoolMatch?.[1]) return { type: "spool", spoolId: spoolMatch[1] };
-
-    const locationMatch = pathname.match(LOCATION_PATH_RE);
-    if (locationMatch?.[1]) return { type: "location", locationId: locationMatch[1] };
-  } catch {
-    // 非 URL 内容继续按路径/纯文本解析
-  }
-
-  const spoolMatch = text.match(SPOOL_PATH_RE);
-  if (spoolMatch?.[1]) return { type: "spool", spoolId: spoolMatch[1] };
-
-  const locationMatch = text.match(LOCATION_PATH_RE);
-  if (locationMatch?.[1]) return { type: "location", locationId: locationMatch[1] };
-
-  const uuidMatch = text.match(UUID_ONLY_RE);
-  if (uuidMatch?.[1]) return { type: "location", locationId: uuidMatch[1] };
-
-  const normalizedUpcGtin = normalizeUpcGtin(text);
-  if (isValidUpcGtin(normalizedUpcGtin)) {
-    return { type: "upc_gtin", upcGtin: normalizedUpcGtin };
-  }
-
-  return { type: "unknown" };
-}
 
 export function GlobalScanDialog({ trigger }: GlobalScanDialogProps) {
   const router = useRouter();
@@ -124,7 +84,7 @@ export function GlobalScanDialog({ trigger }: GlobalScanDialogProps) {
 
     if (target.type === "spool") {
       setOpen(false);
-      router.push(`/spool/${target.spoolId}`);
+      router.push(`/spools/${target.spoolId}`);
       return;
     }
 
@@ -148,11 +108,11 @@ export function GlobalScanDialog({ trigger }: GlobalScanDialogProps) {
     if (target.type === "upc_gtin") {
       try {
         const items = await apiFetch<CatalogLookupItem[]>(
-          `/api/catalog?upc_gtin=${encodeURIComponent(target.upcGtin)}`
+          `/api/filaments?upc_gtin=${encodeURIComponent(target.upcGtin)}`
         );
         if (items.length > 0) {
           setOpen(false);
-          router.push(`/catalog/${items[0].id}`);
+          router.push(`/filaments/${items[0].id}`);
           return;
         }
         setMissingUpcGtin(target.upcGtin);
@@ -188,7 +148,7 @@ export function GlobalScanDialog({ trigger }: GlobalScanDialogProps) {
         body: JSON.stringify({ location_id: pendingLocationId }),
       });
       setOpen(false);
-      router.push(`/spool/${spoolId}?statusMsg=${encodeURIComponent("位置已更新")}`);
+      router.push(`/spools/${spoolId}?statusMsg=${encodeURIComponent("位置已更新")}`);
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "分配位置失败，请重试");
     } finally {
@@ -196,10 +156,10 @@ export function GlobalScanDialog({ trigger }: GlobalScanDialogProps) {
     }
   }
 
-  function handleCreateCatalog() {
+  function handleCreateFilament() {
     if (!missingUpcGtin) return;
     setOpen(false);
-    router.push(`/catalog/new?upc_gtin=${encodeURIComponent(missingUpcGtin)}`);
+    router.push(`/filaments/new?upc_gtin=${encodeURIComponent(missingUpcGtin)}`);
   }
 
   return (
@@ -260,13 +220,13 @@ export function GlobalScanDialog({ trigger }: GlobalScanDialogProps) {
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">
-                        {spool.globalFilament.brand} ·{" "}
-                        {[spool.globalFilament.material_type, spool.globalFilament.material]
+                        {spool.filament.brand} ·{" "}
+                        {[spool.filament.material, spool.filament.variant]
                           .filter(Boolean)
                           .join(" ")}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {spool.globalFilament.color_name} · 当前：{spool.location?.name ?? "未分配"}
+                        {spool.filament.color_name} · 当前：{spool.location?.name ?? "未分配"}
                       </p>
                     </div>
                     <Button
@@ -293,7 +253,7 @@ export function GlobalScanDialog({ trigger }: GlobalScanDialogProps) {
               {statusMsg || "数据库中未找到该 UPC/GTIN"}
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <Button type="button" onClick={handleCreateCatalog}>
+              <Button type="button" onClick={handleCreateFilament}>
                 去新建耗材
               </Button>
               <Button type="button" variant="outline" onClick={() => restartScanner()}>

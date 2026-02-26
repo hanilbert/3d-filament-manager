@@ -8,7 +8,7 @@ export async function findSharedBrandLogoUrl(
   if (!normalized) return null;
 
   // SQLite LIKE is case-insensitive for ASCII; use contains for broader match
-  const result = await prisma.globalFilament.findFirst({
+  const result = await prisma.filament.findFirst({
     where: {
       brand: { contains: brand.trim() },
       logo_url: { not: null },

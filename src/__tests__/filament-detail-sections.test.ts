@@ -31,8 +31,8 @@ describe("hasVisibleItems", () => {
 describe("getFilamentDetailSections", () => {
   const minimalFilament = {
     brand: "Bambu",
-    material_type: "PLA",
-    material: "Basic",
+    material: "PLA",
+    variant: "Basic",
     color_name: "白色",
     color_hex: "#FFFFFF",
     density: null, diameter: null, nominal_weight: null,

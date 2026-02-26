@@ -1,4 +1,4 @@
-import { GlobalFilament } from "@/lib/types";
+import { Filament } from "@/lib/types";
 
 export type DetailLayout = "list" | "metric";
 
@@ -24,7 +24,7 @@ export function hasVisibleItems(items: DetailItem[]): boolean {
   return items.some((item) => hasDetailValue(item.value));
 }
 
-type FilamentDetailSource = Omit<GlobalFilament, "id" | "created_at">;
+type FilamentDetailSource = Omit<Filament, "id" | "created_at">;
 
 export function getFilamentDetailSections(filament: FilamentDetailSource): DetailSectionConfig[] {
   return [
@@ -34,8 +34,8 @@ export function getFilamentDetailSections(filament: FilamentDetailSource): Detai
       layout: "list",
       items: [
         { label: "品牌", value: filament.brand },
-        { label: "材料", value: filament.material_type },
-        { label: "类型", value: filament.material },
+        { label: "材料", value: filament.material },
+        { label: "细分", value: filament.variant },
         { label: "颜色名称", value: filament.color_name },
         { label: "颜色 HEX", value: filament.color_hex },
       ],

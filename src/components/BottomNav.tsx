@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 const tabs = [
   {
     href: "/spools",
-    label: "料卷",
+    label: "线轴",
     icon: (active: boolean) => (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -50,7 +50,7 @@ const tabs = [
     ),
   },
   {
-    href: "/catalog",
+    href: "/filaments",
     label: "品牌与材料",
     icon: (active: boolean) => (
       <svg

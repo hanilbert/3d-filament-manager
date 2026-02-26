@@ -1,7 +1,6 @@
 /**
- * Backfill material_type from existing material values.
- * - Extracts the first word as material_type (e.g. "PLA Matte" → "PLA")
- * - Renames bare "PLA" → "PLA Basic" (no sub-type should exist without a qualifier)
+ * Backfill Filament.material from Filament.variant when material is empty.
+ * 用于字段重命名后的兜底修复：如果材料主类为空，尝试从细分类型首词推断。
  *
  * Usage: npx tsx prisma/backfill-material-type.ts
  */
@@ -10,38 +9,25 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  // Step 1: Rename bare material names to "X Basic"
-  const bareRows = await prisma.globalFilament.findMany({
+  const missingMaterialRows = await prisma.filament.findMany({
     where: {
-      material: { in: ["PLA", "PETG", "TPU"] },
+      material: "",
     },
-    select: { id: true, material: true },
+    select: { id: true, variant: true },
   });
 
-  for (const row of bareRows) {
-    await prisma.globalFilament.update({
+  let updated = 0;
+  for (const row of missingMaterialRows) {
+    const inferred = row.variant.trim().split(/\s+/)[0] || "UNKNOWN";
+    await prisma.filament.update({
       where: { id: row.id },
-      data: { material: `${row.material} Basic` },
+      data: { material: inferred },
     });
-    console.log(`Renamed material "${row.material}" → "${row.material} Basic" (id: ${row.id})`);
+    updated += 1;
+    console.log(`Set material="${inferred}" from variant="${row.variant}" (id: ${row.id})`);
   }
 
-  // Step 2: Backfill material_type = first word of material
-  const all = await prisma.globalFilament.findMany({
-    where: { material_type: null },
-    select: { id: true, material: true },
-  });
-
-  for (const row of all) {
-    const materialType = row.material.split(" ")[0];
-    await prisma.globalFilament.update({
-      where: { id: row.id },
-      data: { material_type: materialType },
-    });
-    console.log(`Set material_type="${materialType}" for "${row.material}" (id: ${row.id})`);
-  }
-
-  console.log(`\nDone. Processed ${bareRows.length} renames, ${all.length} backfills.`);
+  console.log(`\nDone. Processed ${updated} backfills.`);
 }
 
 main()

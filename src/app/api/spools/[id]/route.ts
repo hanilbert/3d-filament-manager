@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
+import { findSharedBrandLogoUrl } from "@/lib/brand-logo";
+import { withFallbackFilamentLogo } from "@/lib/spool-detail";
+import { repairOrphanSpoolFilaments } from "@/lib/data-repair";
 
 export async function GET(
   request: NextRequest,
@@ -8,18 +11,22 @@ export async function GET(
 ) {
   const authError = await requireAuth(request);
   if (authError) return authError;
+  await repairOrphanSpoolFilaments();
 
   const { id } = await params;
   const spool = await prisma.spool.findUnique({
     where: { id },
     include: {
-      globalFilament: true,
+      filament: true,
       location: true,
     },
   });
 
   if (!spool) return NextResponse.json({ error: "未找到" }, { status: 404 });
-  return NextResponse.json(spool);
+  const normalized = await withFallbackFilamentLogo(spool, (brand, filamentId) =>
+    findSharedBrandLogoUrl(brand, filamentId)
+  );
+  return NextResponse.json(normalized);
 }
 
 export async function PATCH(
@@ -28,6 +35,7 @@ export async function PATCH(
 ) {
   const authError = await requireAuth(request);
   if (authError) return authError;
+  await repairOrphanSpoolFilaments();
 
   const { id } = await params;
   try {
@@ -35,12 +43,13 @@ export async function PATCH(
     if (body.status !== undefined && !["ACTIVE", "EMPTY"].includes(body.status)) {
       return NextResponse.json({ error: "status 必须为 ACTIVE 或 EMPTY" }, { status: 400 });
     }
+
     const allowedFields = ["location_id", "status"];
     const data: Record<string, unknown> = {};
     for (const key of allowedFields) {
       if (key in body) data[key] = body[key];
     }
-    // Validate and handle metadata: allow clearing with null and enforce size on stored string
+
     if ("metadata" in body) {
       if (body.metadata === null) {
         data.metadata = null;
@@ -63,12 +72,15 @@ export async function PATCH(
       where: { id },
       data,
       include: {
-        globalFilament: true,
+        filament: true,
         location: true,
       },
     });
 
-    return NextResponse.json(spool);
+    const normalized = await withFallbackFilamentLogo(spool, (brand, filamentId) =>
+      findSharedBrandLogoUrl(brand, filamentId)
+    );
+    return NextResponse.json(normalized);
   } catch {
     return NextResponse.json({ error: "更新失败" }, { status: 500 });
   }
