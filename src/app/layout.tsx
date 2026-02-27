@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import "./globals.css";
 import { ConditionalNav } from "@/components/ConditionalNav";
 import { ConditionalSideNav } from "@/components/ConditionalSideNav";
+import { ThemeProvider } from "@/components/theme/theme-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -10,7 +11,7 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Spool Tracker",
+  title: "线轴管家",
   description: "3D 打印耗材位置与生命周期管理",
 };
 
@@ -26,20 +27,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} antialiased bg-background text-foreground`}
       >
-        {/* 桌面端侧边栏 */}
-        <div className="hidden md:flex md:w-56 md:flex-col md:fixed md:inset-y-0">
-          <ConditionalSideNav />
-        </div>
-        {/* 主内容区 */}
-        <main className="md:pl-56 pb-16 md:pb-0">{children}</main>
-        {/* 移动端底部导航 */}
-        <div className="md:hidden">
-          <ConditionalNav />
-        </div>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          storageKey="spool-theme"
+        >
+          <div className="hidden md:fixed md:inset-y-0 md:flex md:w-56 md:flex-col">
+            <ConditionalSideNav />
+          </div>
+          <main className="md:pl-56 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+            {children}
+          </main>
+          <div className="md:hidden">
+            <ConditionalNav />
+          </div>
+        </ThemeProvider>
       </body>
     </html>
   );
