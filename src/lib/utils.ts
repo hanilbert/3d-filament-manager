@@ -8,3 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 export function formatDate(value: string): string {
   return new Date(value).toLocaleDateString("zh-CN");
 }
+
+export function formatNumber(n: number): string {
+  return n.toLocaleString("zh-CN");
+}

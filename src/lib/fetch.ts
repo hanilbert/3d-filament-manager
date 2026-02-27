@@ -1,3 +1,5 @@
+const MAX_ERROR_MESSAGE_LENGTH = 120;
+
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {}
@@ -33,7 +35,7 @@ export async function apiFetch<T>(
     } else {
       const text = await res.text().catch(() => "");
       if (text.trim()) {
-        message = `${message}: ${text.slice(0, 120)}`;
+        message = `${message}: ${text.slice(0, MAX_ERROR_MESSAGE_LENGTH)}`;
       }
     }
 

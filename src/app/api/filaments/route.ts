@@ -5,6 +5,11 @@ import { requireAuth } from "@/lib/api-auth";
 import { FILAMENT_OPTIONAL_FIELDS } from "@/lib/types";
 import { findSharedBrandLogoUrl } from "@/lib/brand-logo";
 import { parseBodyUpcGtin, parseQueryUpcGtin } from "@/lib/upc-gtin";
+import {
+  aggregateMaterialTypeCounts,
+  buildTextSearchCondition,
+  parseExactSearchParam,
+} from "@/lib/filaments-query";
 
 const FLAT_SORT_FIELDS = [
   "brand",
@@ -50,6 +55,172 @@ function getFlatListOrderBy(
   }
 }
 
+async function handleGroupByBrandList(): Promise<NextResponse> {
+  const items = await prisma.filament.findMany({
+    select: { brand: true, logo_url: true },
+  });
+  const map = new Map<string, string | null>();
+  for (const item of items) {
+    if (!map.has(item.brand)) {
+      map.set(item.brand, item.logo_url);
+    } else if (!map.get(item.brand) && item.logo_url) {
+      map.set(item.brand, item.logo_url);
+    }
+  }
+  const result = Array.from(map.entries())
+    .map(([brandName, logo_url]) => ({ brand: brandName, logo_url }))
+    .sort((a, b) => a.brand.localeCompare(b.brand));
+  return NextResponse.json(result);
+}
+
+async function handleGroupByBrand(): Promise<NextResponse> {
+  const items = await prisma.filament.findMany({
+    select: {
+      brand: true,
+      material: true,
+      variant: true,
+      logo_url: true,
+      _count: { select: { spools: true } },
+    },
+  });
+
+  const brandMap = new Map<string, {
+    brand: string;
+    logo_url?: string | null;
+    count: number;
+    materials: Set<string>;
+    variants: Set<string>;
+    spoolCount: number;
+  }>();
+
+  for (const item of items) {
+    const existing = brandMap.get(item.brand);
+    if (existing) {
+      existing.count += 1;
+      existing.materials.add(item.material);
+      if (item.variant) existing.variants.add(item.variant);
+      existing.spoolCount += item._count.spools;
+      if (!existing.logo_url && item.logo_url) {
+        existing.logo_url = item.logo_url;
+      }
+    } else {
+      brandMap.set(item.brand, {
+        brand: item.brand,
+        logo_url: item.logo_url,
+        count: 1,
+        materials: new Set([item.material]),
+        variants: item.variant ? new Set([item.variant]) : new Set(),
+        spoolCount: item._count.spools,
+      });
+    }
+  }
+
+  const result = Array.from(brandMap.values())
+    .map((b) => ({
+      brand: b.brand,
+      logo_url: b.logo_url,
+      count: b.count,
+      materials: Array.from(b.materials),
+      variants: Array.from(b.variants),
+      spoolCount: b.spoolCount,
+    }))
+    .sort((a, b) => b.count - a.count);
+  return NextResponse.json(result);
+}
+
+async function handleGroupByMaterial(): Promise<NextResponse> {
+  const items = await prisma.filament.findMany({
+    select: {
+      material: true,
+      variant: true,
+      brand: true,
+      _count: { select: { spools: true } },
+    },
+  });
+
+  const materialMap = new Map<string, {
+    material: string;
+    variants: Set<string>;
+    brands: Set<string>;
+    count: number;
+    spoolCount: number;
+  }>();
+
+  for (const item of items) {
+    const existing = materialMap.get(item.material);
+    if (existing) {
+      existing.count += 1;
+      if (item.variant) existing.variants.add(item.variant);
+      existing.brands.add(item.brand);
+      existing.spoolCount += item._count.spools;
+    } else {
+      materialMap.set(item.material, {
+        material: item.material,
+        variants: item.variant ? new Set([item.variant]) : new Set(),
+        brands: new Set([item.brand]),
+        count: 1,
+        spoolCount: item._count.spools,
+      });
+    }
+  }
+
+  const result = Array.from(materialMap.values())
+    .map((m) => ({
+      material: m.material,
+      variantCount: m.variants.size,
+      brandCount: m.brands.size,
+      count: m.count,
+      spoolCount: m.spoolCount,
+    }))
+    .sort((a, b) => b.count - a.count);
+  return NextResponse.json(result);
+}
+
+async function handleGroupByVariant(material: string): Promise<NextResponse> {
+  const items = await prisma.filament.findMany({
+    where: { material },
+    select: {
+      variant: true,
+      brand: true,
+      _count: { select: { spools: true } },
+    },
+  });
+
+  const variantMap = new Map<string, {
+    variant: string;
+    brands: Set<string>;
+    colorCount: number;
+    spoolCount: number;
+  }>();
+
+  for (const item of items) {
+    const key = item.variant || "";
+    const existing = variantMap.get(key);
+    if (existing) {
+      existing.colorCount += 1;
+      existing.brands.add(item.brand);
+      existing.spoolCount += item._count.spools;
+    } else {
+      variantMap.set(key, {
+        variant: key,
+        brands: new Set([item.brand]),
+        colorCount: 1,
+        spoolCount: item._count.spools,
+      });
+    }
+  }
+
+  const result = Array.from(variantMap.values())
+    .map((m) => ({
+      variant: m.variant,
+      brandCount: m.brands.size,
+      colorCount: m.colorCount,
+      spoolCount: m.spoolCount,
+    }))
+    .sort((a, b) => b.colorCount - a.colorCount);
+  return NextResponse.json(result);
+}
+
 export async function GET(request: NextRequest) {
   const authError = await requireAuth(request);
   if (authError) return authError;
@@ -63,178 +234,29 @@ export async function GET(request: NextRequest) {
   const groupBy = searchParams.get("groupBy");
   const sortBy = parseFlatSortField(searchParams.get("sortBy"));
   const sortOrder = parseSortOrder(searchParams.get("sortOrder"));
+  const exact = parseExactSearchParam(searchParams.get("exact"));
+  const brandFilter = buildTextSearchCondition(brand, exact);
+  const materialFilter = buildTextSearchCondition(material, exact);
+  const variantFilter = buildTextSearchCondition(variant, exact);
 
   if (upcGtin.error) {
     return NextResponse.json({ error: upcGtin.error }, { status: 400 });
   }
 
-  if (groupBy === "brandList") {
-    const items = await prisma.filament.findMany({
-      select: { brand: true, logo_url: true },
-    });
-    const map = new Map<string, string | null>();
-    for (const item of items) {
-      if (!map.has(item.brand)) {
-        map.set(item.brand, item.logo_url);
-      } else if (!map.get(item.brand) && item.logo_url) {
-        map.set(item.brand, item.logo_url);
-      }
-    }
-    const result = Array.from(map.entries()).map(([brandName, logo_url]) => ({ brand: brandName, logo_url }));
-    result.sort((a, b) => a.brand.localeCompare(b.brand));
-    return NextResponse.json(result);
-  }
+  if (groupBy === "brandList") return handleGroupByBrandList();
+  if (groupBy === "brand") return handleGroupByBrand();
+  if (groupBy === "material") return handleGroupByMaterial();
 
-  if (groupBy === "brand") {
-    const items = await prisma.filament.findMany({
-      select: {
-        brand: true,
-        material: true,
-        variant: true,
-        logo_url: true,
-        _count: { select: { spools: true } },
-      },
-    });
-
-    const brandMap = new Map<string, {
-      brand: string;
-      logo_url?: string | null;
-      count: number;
-      materials: Set<string>;
-      variants: Set<string>;
-      spoolCount: number;
-    }>();
-
-    for (const item of items) {
-      const existing = brandMap.get(item.brand);
-      if (existing) {
-        existing.count += 1;
-        existing.materials.add(item.material);
-        if (item.variant) existing.variants.add(item.variant);
-        existing.spoolCount += item._count.spools;
-        if (!existing.logo_url && item.logo_url) {
-          existing.logo_url = item.logo_url;
-        }
-      } else {
-        brandMap.set(item.brand, {
-          brand: item.brand,
-          logo_url: item.logo_url,
-          count: 1,
-          materials: new Set([item.material]),
-          variants: item.variant ? new Set([item.variant]) : new Set(),
-          spoolCount: item._count.spools,
-        });
-      }
-    }
-
-    const result = Array.from(brandMap.values()).map((b) => ({
-      brand: b.brand,
-      logo_url: b.logo_url,
-      count: b.count,
-      materials: Array.from(b.materials),
-      variants: Array.from(b.variants),
-      spoolCount: b.spoolCount,
-    }));
-
-    result.sort((a, b) => b.count - a.count);
-    return NextResponse.json(result);
-  }
-
-  if (groupBy === "material") {
-    const items = await prisma.filament.findMany({
-      select: {
-        material: true,
-        variant: true,
-        brand: true,
-        _count: { select: { spools: true } },
-      },
-    });
-
-    const materialMap = new Map<string, {
-      material: string;
-      variants: Set<string>;
-      brands: Set<string>;
-      count: number;
-      spoolCount: number;
-    }>();
-
-    for (const item of items) {
-      const existing = materialMap.get(item.material);
-      if (existing) {
-        existing.count += 1;
-        if (item.variant) existing.variants.add(item.variant);
-        existing.brands.add(item.brand);
-        existing.spoolCount += item._count.spools;
-      } else {
-        materialMap.set(item.material, {
-          material: item.material,
-          variants: item.variant ? new Set([item.variant]) : new Set(),
-          brands: new Set([item.brand]),
-          count: 1,
-          spoolCount: item._count.spools,
-        });
-      }
-    }
-
-    const result = Array.from(materialMap.values()).map((m) => ({
-      material: m.material,
-      variantCount: m.variants.size,
-      brandCount: m.brands.size,
-      count: m.count,
-      spoolCount: m.spoolCount,
-    }));
-
-    result.sort((a, b) => b.count - a.count);
-    return NextResponse.json(result);
+  if (groupBy === "materialType") {
+    const items = await prisma.filament.findMany({ select: { variant: true } });
+    return NextResponse.json(aggregateMaterialTypeCounts(items));
   }
 
   if (groupBy === "variant") {
     if (!material) {
       return NextResponse.json({ error: "material parameter required" }, { status: 400 });
     }
-
-    const items = await prisma.filament.findMany({
-      where: { material },
-      select: {
-        variant: true,
-        brand: true,
-        _count: { select: { spools: true } },
-      },
-    });
-
-    const variantMap = new Map<string, {
-      variant: string;
-      brands: Set<string>;
-      colorCount: number;
-      spoolCount: number;
-    }>();
-
-    for (const item of items) {
-      const key = item.variant || "";
-      const existing = variantMap.get(key);
-      if (existing) {
-        existing.colorCount += 1;
-        existing.brands.add(item.brand);
-        existing.spoolCount += item._count.spools;
-      } else {
-        variantMap.set(key, {
-          variant: key,
-          brands: new Set([item.brand]),
-          colorCount: 1,
-          spoolCount: item._count.spools,
-        });
-      }
-    }
-
-    const result = Array.from(variantMap.values()).map((m) => ({
-      variant: m.variant,
-      brandCount: m.brands.size,
-      colorCount: m.colorCount,
-      spoolCount: m.spoolCount,
-    }));
-
-    result.sort((a, b) => b.colorCount - a.colorCount);
-    return NextResponse.json(result);
+    return handleGroupByVariant(material);
   }
 
   const items = await prisma.filament.findMany({
@@ -250,9 +272,9 @@ export async function GET(request: NextRequest) {
               ],
             }
           : {},
-        brand ? { brand: { contains: brand } } : {},
-        material ? { material: { contains: material } } : {},
-        variant ? { variant: { contains: variant } } : {},
+        brandFilter ? { brand: brandFilter } : {},
+        materialFilter ? { material: materialFilter } : {},
+        variantFilter ? { variant: variantFilter } : {},
         upcGtin.provided ? { upc_gtin: upcGtin.normalized } : {},
       ],
     },

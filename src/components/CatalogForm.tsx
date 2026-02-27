@@ -6,12 +6,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/fetch";
+import { FILAMENT_OPTIONAL_FIELDS } from "@/lib/types";
 import { ChevronDown } from "lucide-react";
 
 interface BrandOption {
   brand: string;
   logo_url: string | null;
 }
+
+const MATERIAL_PRESETS = [
+  "PLA", "PLA+/Pro", "PETG", "ABS", "ABS+", "APLA", "ASA", "ASA+",
+  "CoPA", "CPE", "HIPS", "HT-PLA", "PA (Nylon)", "PA12", "PA6", "PA612",
+  "PAHT", "PBT", "PC", "PC-ABS", "PCL", "PCTG", "PE", "PEBA", "PEEK",
+  "PET", "PETG+", "PHA", "PIPG", "PMMA", "PP", "PPA", "PPS", "PVA",
+  "PVB", "SAN", "SBS", "SMP", "TPE", "TPR", "TPU",
+];
 
 interface FormValues {
   brand: string;
@@ -137,13 +146,6 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
   const [brandList, setBrandList] = useState<BrandOption[]>([]);
   const [brandMode, setBrandMode] = useState<"select" | "custom">("select");
 
-  const MATERIAL_PRESETS = [
-    "PLA", "PLA+/Pro", "PETG", "ABS", "ABS+", "APLA", "ASA", "ASA+",
-    "CoPA", "CPE", "HIPS", "HT-PLA", "PA (Nylon)", "PA12", "PA6", "PA612",
-    "PAHT", "PBT", "PC", "PC-ABS", "PCL", "PCTG", "PE", "PEBA", "PEEK",
-    "PET", "PETG+", "PHA", "PIPG", "PMMA", "PP", "PPA", "PPS", "PVA",
-    "PVB", "SAN", "SBS", "SMP", "TPE", "TPR", "TPU",
-  ];
   const allMaterialOptions = Array.from(new Set([...MATERIAL_PRESETS, ...materials])).sort();
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
@@ -218,12 +220,10 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
       const material = values.material.trim();
       if (!brand) {
         setError("请选择或输入品牌");
-        setSaving(false);
         return;
       }
       if (!material) {
         setError("请选择或输入材料");
-        setSaving(false);
         return;
       }
 
@@ -234,18 +234,7 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
         color_name: values.color_name,
       };
 
-      const optionalKeys: (keyof FormValues)[] = [
-        "color_hex", "logo_url", "nozzle_temp", "bed_temp", "print_speed",
-        "density", "diameter", "nominal_weight", "softening_temp", "chamber_temp",
-        "ironing_flow", "ironing_speed", "shrinkage", "empty_spool_weight", "pressure_advance",
-        "fan_min", "fan_max",
-        "first_layer_walls", "first_layer_infill", "first_layer_outer_wall", "first_layer_top_surface",
-        "other_layers_walls", "other_layers_infill", "other_layers_outer_wall", "other_layers_top_surface",
-        "measured_rgb", "top_voted_td", "num_td_votes",
-        "max_volumetric_speed", "flow_ratio",
-        "drying_temp", "dry_time",
-        "ams_compatibility", "build_plates",
-      ];
+      const optionalKeys = FILAMENT_OPTIONAL_FIELDS.filter(f => f !== "upc_gtin") as (keyof FormValues)[];
       for (const k of optionalKeys) {
         body[k] = values[k] || undefined;
       }

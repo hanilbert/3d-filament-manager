@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LibraryBig, FlaskConical, MapPin, ArrowRight, Package2 } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { formatNumber } from "@/lib/utils";
 
 async function getStats() {
   const [filamentCount, spoolActiveCount, spoolEmptyCount, locationCount, brandsRaw, materialsRaw] =
@@ -41,10 +42,6 @@ async function getStats() {
   };
 }
 
-function fmt(n: number) {
-  return n.toLocaleString("zh-CN");
-}
-
 const features = [
   {
     icon: LibraryBig,
@@ -82,7 +79,7 @@ export default async function HomePage() {
             <span>3D 打印耗材管理</span>
           </div>
           <h1 className="text-3xl font-bold tracking-tight md:text-4xl lg:text-5xl">
-            线轴管家
+            耗材管家
           </h1>
           <p className="mt-4 text-base text-muted-foreground md:text-lg leading-relaxed">
             高效管理您的 3D 打印耗材线轴。
@@ -119,13 +116,13 @@ export default async function HomePage() {
               <LibraryBig className="size-3.5" />
               品牌
             </p>
-            <p className="text-2xl font-bold md:text-3xl">{fmt(stats.brandCount)}</p>
+            <p className="text-2xl font-bold md:text-3xl">{formatNumber(stats.brandCount)}</p>
             <p className="mt-1 text-xs text-muted-foreground">个品牌</p>
             {stats.topBrand && (
               <div className="mt-3 pt-3 border-t border-border/60">
                 <p className="text-xs text-muted-foreground">线轴最多</p>
                 <p className="text-sm font-medium truncate">{stats.topBrand.name}</p>
-                <p className="text-xs text-muted-foreground">{fmt(stats.topBrand.spools)} 个线轴</p>
+                <p className="text-xs text-muted-foreground">{formatNumber(stats.topBrand.spools)} 个线轴</p>
               </div>
             )}
           </Link>
@@ -139,13 +136,13 @@ export default async function HomePage() {
               <FlaskConical className="size-3.5" />
               耗材目录
             </p>
-            <p className="text-2xl font-bold md:text-3xl">{fmt(stats.filamentCount)}</p>
+            <p className="text-2xl font-bold md:text-3xl">{formatNumber(stats.filamentCount)}</p>
             <p className="mt-1 text-xs text-muted-foreground">个耗材条目</p>
             {stats.topMaterial && (
               <div className="mt-3 pt-3 border-t border-border/60">
                 <p className="text-xs text-muted-foreground">最多条目材料</p>
                 <p className="text-sm font-medium">{stats.topMaterial.name}</p>
-                <p className="text-xs text-muted-foreground">{fmt(stats.topMaterial.count)} 个条目</p>
+                <p className="text-xs text-muted-foreground">{formatNumber(stats.topMaterial.count)} 个条目</p>
               </div>
             )}
           </Link>
@@ -159,11 +156,11 @@ export default async function HomePage() {
               <FlaskConical className="size-3.5" />
               材料种类
             </p>
-            <p className="text-2xl font-bold md:text-3xl">{fmt(stats.materialCount)}</p>
+            <p className="text-2xl font-bold md:text-3xl">{formatNumber(stats.materialCount)}</p>
             <p className="mt-1 text-xs text-muted-foreground">种材料</p>
             <div className="mt-3 pt-3 border-t border-border/60">
               <p className="text-xs text-muted-foreground">存储位置</p>
-              <p className="text-2xl font-bold">{fmt(stats.locationCount)}</p>
+              <p className="text-2xl font-bold">{formatNumber(stats.locationCount)}</p>
               <p className="text-xs text-muted-foreground">个位置</p>
             </div>
           </Link>
@@ -177,11 +174,11 @@ export default async function HomePage() {
               <Package2 className="size-3.5" />
               我的线轴
             </p>
-            <p className="text-2xl font-bold md:text-3xl">{fmt(stats.spoolActiveCount)}</p>
+            <p className="text-2xl font-bold md:text-3xl">{formatNumber(stats.spoolActiveCount)}</p>
             <p className="mt-1 text-xs text-muted-foreground">个使用中</p>
             <div className="mt-3 pt-3 border-t border-border/60">
               <p className="text-xs text-muted-foreground">已归档线轴</p>
-              <p className="text-2xl font-bold">{fmt(stats.spoolEmptyCount)}</p>
+              <p className="text-2xl font-bold">{formatNumber(stats.spoolEmptyCount)}</p>
               <p className="text-xs text-muted-foreground">个已用完</p>
             </div>
           </Link>
