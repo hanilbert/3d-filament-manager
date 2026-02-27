@@ -35,7 +35,7 @@ export function getFilamentDetailSections(filament: FilamentDetailSource): Detai
       items: [
         { label: "品牌", value: filament.brand },
         { label: "材料", value: filament.material },
-        { label: "细分", value: filament.variant },
+        { label: "类型", value: filament.variant },
         { label: "颜色名称", value: filament.color_name },
         { label: "颜色 HEX", value: filament.color_hex },
       ],

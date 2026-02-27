@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ExternalLink, Pencil, ScanLine } from "lucide-react";
+import { ExternalLink, Pencil } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ColorSwatch } from "@/components/ColorSwatch";
-import { Button } from "@/components/ui/button";
-import { GlobalScanDialog } from "@/components/GlobalScanDialog";
 import { SortHeader } from "@/components/SortHeader";
+import { PageHeader } from "@/components/layout/page-header";
+import { PageShell } from "@/components/layout/page-shell";
 import { apiFetch } from "@/lib/fetch";
 import { formatDate } from "@/lib/utils";
 
@@ -104,7 +104,7 @@ function MobileSpoolList({
   return (
     <div className="border border-border rounded-lg overflow-hidden bg-card">
       {groups.map((group) => (
-        <Link key={group.filamentId} href={`/filaments/${group.filamentId}`}>
+        <Link key={group.filamentId} href={`/spools/details/${group.filamentId}`}>
           <div className="px-3 py-3 border-b border-border/60 last:border-0 flex items-start gap-3">
             <div className="flex-1 min-w-0 space-y-1.5">
               <div className="flex items-center justify-between gap-2">
@@ -162,31 +162,31 @@ function DesktopSpoolTable({
       ) : groups.length === 0 ? (
         <div className="text-center text-muted-foreground py-8 border border-border rounded-lg">{empty}</div>
       ) : (
-        <div className="border border-border rounded-lg overflow-x-auto">
-          <table className="w-full min-w-[1000px] text-sm">
+        <div className="border border-border rounded-lg overflow-hidden">
+          <table className="w-full table-fixed text-sm">
             <thead>
               <tr className="bg-muted/30 border-b border-border">
-                <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
+                <th className="text-left px-4 py-3 font-medium w-[22%]">
                   <SortHeader field="brand" label="品牌" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
                 </th>
-                <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
+                <th className="text-left px-4 py-3 font-medium w-[10%]">
                   <SortHeader field="material" label="材料" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
                 </th>
-                <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
-                  <SortHeader field="variant" label="细分" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
+                <th className="text-left px-4 py-3 font-medium w-[10%]">
+                  <SortHeader field="variant" label="类型" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
                 </th>
-                <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
+                <th className="text-left px-4 py-3 font-medium w-[14%]">
                   <SortHeader field="color_name" label="颜色" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
                 </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">RGB</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">RGB #</th>
-                <th className="text-center px-4 py-3 font-medium whitespace-nowrap">
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground w-[7%]">RGB</th>
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground w-[12%]">RGB #</th>
+                <th className="text-center px-4 py-3 font-medium w-[7%]">
                   <SortHeader field="count" label="线轴数" sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
                 </th>
-                <th className="text-left px-4 py-3 font-medium whitespace-nowrap">
+                <th className="text-left px-4 py-3 font-medium w-[12%]">
                   <SortHeader field={mode === "active" ? "created_at" : "updated_at"} label={mode === "active" ? "入库时间" : "归档时间"} sortBy={sortBy} sortOrder={sortOrder} onToggle={onToggleSort} />
                 </th>
-                <th className="text-right px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">操作</th>
+                <th className="text-right px-4 py-3 font-medium text-muted-foreground w-[6%]">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -196,14 +196,14 @@ function DesktopSpoolTable({
                   className="border-b border-border/70 last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
                   onClick={() => onRowClick(group.filamentId)}
                 >
-                  <td className="px-4 py-3">{group.brand}</td>
-                  <td className="px-4 py-3">{group.material || "-"}</td>
-                  <td className="px-4 py-3">{group.variant || "-"}</td>
-                  <td className="px-4 py-3">{group.color_name}</td>
+                  <td className="px-4 py-3 truncate">{group.brand}</td>
+                  <td className="px-4 py-3 truncate">{group.material || "-"}</td>
+                  <td className="px-4 py-3 truncate">{group.variant || "-"}</td>
+                  <td className="px-4 py-3 truncate">{group.color_name}</td>
                   <td className="px-4 py-3"><ColorSwatch colorHex={group.color_hex} size="sm" /></td>
-                  <td className="px-4 py-3 font-mono text-xs">{group.color_hex || "-"}</td>
+                  <td className="px-4 py-3 font-mono text-xs truncate">{group.color_hex || "-"}</td>
                   <td className="px-4 py-3 text-center">{group.count}</td>
-                  <td className="px-4 py-3">{mode === "active" ? formatDate(group.latestCreatedAt) : formatDate(group.latestUpdatedAt)}</td>
+                  <td className="px-4 py-3 truncate">{mode === "active" ? formatDate(group.latestCreatedAt) : formatDate(group.latestUpdatedAt)}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="inline-flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                       <Link href={`/filaments/${group.filamentId}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border hover:bg-muted transition-colors" title="查看详情">
@@ -312,23 +312,17 @@ export default function SpoolsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg md:max-w-7xl">
-      <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-semibold">我的线轴</h1>
-        <div className="flex items-center gap-3">
-          <GlobalScanDialog
-            trigger={
-              <Button type="button" size="sm" variant="outline" className="h-8 px-3">
-                <ScanLine className="size-3.5" />
-                扫描
-              </Button>
-            }
-          />
-          <Link href="/filaments" className="text-sm text-primary font-medium">+ 新增</Link>
-        </div>
-      </div>
+    <PageShell size="wide">
+      <PageHeader
+        title="我的线轴"
+        actions={
+          <Link href="/filaments" className="text-sm font-medium text-primary">
+            + 新增
+          </Link>
+        }
+      />
 
-      <div className="p-4 space-y-6">
+      <div className="app-content">
         <div className="md:hidden">
           <Tabs defaultValue="active">
             <TabsList className="w-full">
@@ -356,7 +350,7 @@ export default function SpoolsPage() {
             sortOrder={activeSortOrder}
             onToggleSort={toggleActiveSort}
             empty={<><span>暂无使用中的线轴，</span><Link href="/filaments" className="text-primary underline">去添加</Link></>}
-            onRowClick={(filamentId) => router.push(`/filaments/${filamentId}`)}
+            onRowClick={(filamentId) => router.push(`/spools/details/${filamentId}`)}
           />
 
           <DesktopSpoolTable
@@ -368,10 +362,10 @@ export default function SpoolsPage() {
             sortOrder={emptySortOrder}
             onToggleSort={toggleEmptySort}
             empty={<span>暂无已归档线轴</span>}
-            onRowClick={(filamentId) => router.push(`/filaments/${filamentId}`)}
+            onRowClick={(filamentId) => router.push(`/spools/details/${filamentId}`)}
           />
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

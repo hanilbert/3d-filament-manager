@@ -149,7 +149,7 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
     const iv = initialValues || {};
     return {
-      filamentType: !!(iv.density || iv.diameter || iv.nominal_weight || iv.softening_temp || iv.shrinkage || iv.empty_spool_weight || iv.drying_temp || iv.dry_time || iv.ams_compatibility || iv.build_plates),
+      filamentType: !!(iv.density || iv.diameter || iv.nominal_weight || iv.softening_temp || iv.shrinkage || iv.empty_spool_weight || iv.drying_temp || iv.dry_time || iv.ams_compatibility || iv.build_plates || iv.upc_gtin),
       color: !!(iv.measured_rgb || iv.top_voted_td || iv.num_td_votes),
       settingsOverrides: !!(iv.nozzle_temp || iv.bed_temp || iv.print_speed || iv.chamber_temp || iv.fan_min || iv.fan_max || iv.ironing_flow || iv.ironing_speed || iv.pressure_advance || iv.max_volumetric_speed || iv.flow_ratio || iv.first_layer_walls || iv.other_layers_walls),
     };
@@ -272,7 +272,7 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 space-y-4">
+    <form onSubmit={handleSubmit} className="app-content space-y-4">
       <div className="space-y-2">
         <Label htmlFor="brand">品牌 *</Label>
         <div className="relative">
@@ -345,18 +345,13 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="variant">细分（选填）</Label>
+        <Label htmlFor="variant">类型（选填）</Label>
         <Input id="variant" value={values.variant} onChange={(e) => update("variant", e.target.value)} placeholder="如：Matte、Silk、95A" className="h-12" />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="color_name">颜色名称 *</Label>
         <Input id="color_name" value={values.color_name} onChange={(e) => update("color_name", e.target.value)} placeholder="如：草绿 11500" required className="h-12" />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="upc_gtin">UPC/GTIN（选填）</Label>
-        <Input id="upc_gtin" value={values.upc_gtin} onChange={(e) => update("upc_gtin", e.target.value)} placeholder="如：6971234567890" className="h-12" />
       </div>
 
       <div className="space-y-2">
@@ -367,7 +362,7 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
         </div>
       </div>
 
-      <CollapsibleSection title="Filament Type（耗材属性）" open={openSections.filamentType} onToggle={() => toggleSection("filamentType")}>
+      <CollapsibleSection title="耗材属性" open={openSections.filamentType} onToggle={() => toggleSection("filamentType")}>
         <FormField label="密度" field="density" placeholder="如：1.24g/cm³" values={values} update={update} />
         <FormField label="直径" field="diameter" placeholder="如：1.75mm" values={values} update={update} />
         <FormField label="标称重量" field="nominal_weight" placeholder="如：1000g" values={values} update={update} />
@@ -378,15 +373,16 @@ export function CatalogForm({ initialValues, catalogId }: CatalogFormProps) {
         <FormField label="干燥时间" field="dry_time" placeholder="如：12小时" values={values} update={update} />
         <FormField label="AMS 兼容性" field="ams_compatibility" placeholder="如：兼容 AMS" values={values} update={update} />
         <FormField label="适用热床板" field="build_plates" placeholder="如：PEI / 纹理板" values={values} update={update} />
+        <FormField label="UPC/GTIN（选填）" field="upc_gtin" placeholder="如：6971234567890" values={values} update={update} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Color（颜色相关）" open={openSections.color} onToggle={() => toggleSection("color")}>
+      <CollapsibleSection title="颜色相关" open={openSections.color} onToggle={() => toggleSection("color")}>
         <FormField label="实测 RGB" field="measured_rgb" placeholder="如：#5C8A3C" values={values} update={update} />
         <FormField label="最高投票 TD 值" field="top_voted_td" placeholder="如：2.5" values={values} update={update} />
         <FormField label="TD 投票数" field="num_td_votes" placeholder="如：12" values={values} update={update} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Settings Overrides（打印参数覆盖）" open={openSections.settingsOverrides} onToggle={() => toggleSection("settingsOverrides")}>
+      <CollapsibleSection title="打印参数覆盖" open={openSections.settingsOverrides} onToggle={() => toggleSection("settingsOverrides")}>
         <FormField label="喷嘴温度" field="nozzle_temp" placeholder="如：190-230°C" values={values} update={update} />
         <FormField label="热床温度" field="bed_temp" placeholder="如：35-45°C" values={values} update={update} />
         <FormField label="打印速度" field="print_speed" placeholder="如：≤300 mm/s" values={values} update={update} />

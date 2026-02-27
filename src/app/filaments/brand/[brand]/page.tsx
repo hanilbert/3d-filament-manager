@@ -6,6 +6,8 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ColorSwatch } from "@/components/ColorSwatch";
 import { SortHeader } from "@/components/SortHeader";
+import { PageHeader } from "@/components/layout/page-header";
+import { PageShell } from "@/components/layout/page-shell";
 import { apiFetch } from "@/lib/fetch";
 
 interface FilamentItem {
@@ -50,7 +52,7 @@ export default function BrandDetailPage() {
     async function load() {
       setLoading(true);
       try {
-        const params = new URLSearchParams({ brand, sortBy, sortOrder });
+        const params = new URLSearchParams({ brand, sortBy, sortOrder, exact: "1" });
         const data = await apiFetch<FilamentItem[]>(`/api/filaments?${params.toString()}`);
         setItems(data);
       } finally {
@@ -64,7 +66,7 @@ export default function BrandDetailPage() {
     const groups = new Map<string, GroupedItems>();
     for (const item of items) {
       const material = item.material?.trim() || "未分类";
-      const variant = item.variant?.trim() || "未命名细分";
+      const variant = item.variant?.trim() || "未命名类型";
       const key = `${material}__${variant}`;
       const existing = groups.get(key);
       if (existing) {
@@ -86,13 +88,17 @@ export default function BrandDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg md:max-w-6xl">
-      <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
-        <button onClick={() => router.back()} className="text-muted-foreground"><ArrowLeft className="w-5 h-5" /></button>
-        <h1 className="text-lg font-semibold flex-1">{brand}</h1>
-      </div>
+    <PageShell size="wide">
+      <PageHeader
+        title={brand}
+        back={
+          <button onClick={() => router.back()} className="text-muted-foreground">
+            <ArrowLeft className="size-5" />
+          </button>
+        }
+      />
 
-      <div className="p-4 space-y-4">
+      <div className="app-content">
         {loading ? (
           <p className="text-center text-muted-foreground py-8">加载中...</p>
         ) : items.length === 0 ? (
@@ -100,12 +106,12 @@ export default function BrandDetailPage() {
         ) : (
           <>
             <div className="hidden md:block border border-border rounded-lg overflow-hidden">
-              <table className="w-full text-sm">
+              <table className="w-full table-fixed text-sm">
                 <thead>
                   <tr className="bg-muted/30 border-b border-border">
                     <th className="text-left px-4 py-3 font-medium whitespace-nowrap"><SortHeader field="brand" label="品牌" sortBy={sortBy} sortOrder={sortOrder} onToggle={toggleSort} /></th>
                     <th className="text-left px-4 py-3 font-medium whitespace-nowrap"><SortHeader field="material" label="材料" sortBy={sortBy} sortOrder={sortOrder} onToggle={toggleSort} /></th>
-                    <th className="text-left px-4 py-3 font-medium whitespace-nowrap"><SortHeader field="variant" label="细分" sortBy={sortBy} sortOrder={sortOrder} onToggle={toggleSort} /></th>
+                    <th className="text-left px-4 py-3 font-medium whitespace-nowrap"><SortHeader field="variant" label="类型" sortBy={sortBy} sortOrder={sortOrder} onToggle={toggleSort} /></th>
                     <th className="text-left px-4 py-3 font-medium whitespace-nowrap"><SortHeader field="color_name" label="颜色" sortBy={sortBy} sortOrder={sortOrder} onToggle={toggleSort} /></th>
                     <th className="text-left px-4 py-3 font-medium whitespace-nowrap"><SortHeader field="color_hex" label="RGB HEX" sortBy={sortBy} sortOrder={sortOrder} onToggle={toggleSort} /></th>
                     <th className="text-right px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">操作</th>
@@ -167,6 +173,6 @@ export default function BrandDetailPage() {
           </>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }

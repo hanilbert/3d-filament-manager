@@ -12,11 +12,18 @@ import { FilamentDetailSection } from "@/components/FilamentDetailSection";
 import { DetailSectionCard } from "@/components/DetailSectionCard";
 import { DetailKeyValueList } from "@/components/DetailKeyValueList";
 import { QRScanner } from "@/components/QRScanner";
+import { PageHeader } from "@/components/layout/page-header";
+import { PageShell } from "@/components/layout/page-shell";
 import { apiFetch } from "@/lib/fetch";
 import { getFilamentDetailSections, hasVisibleItems } from "@/lib/filament-detail-sections";
 import { SpoolLabelPrinter } from "./print/spool-label-printer";
 import { Filament } from "@/lib/types";
 import { ArrowLeft } from "lucide-react";
+
+interface SpoolLocation {
+  id: string;
+  name: string;
+}
 
 interface SpoolDetail {
   id: string;
@@ -38,6 +45,9 @@ export default function SpoolDetailPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
+  const [locations, setLocations] = useState<SpoolLocation[]>([]);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [selectedLocationId, setSelectedLocationId] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -53,9 +63,37 @@ export default function SpoolDetailPage() {
   }, [load]);
 
   useEffect(() => {
+    async function loadLocations() {
+      try {
+        const data = await apiFetch<SpoolLocation[]>("/api/locations");
+        setLocations(data);
+      } catch {
+        // ignore
+      }
+    }
+    void loadLocations();
+  }, []);
+
+  useEffect(() => {
     const message = searchParams.get("statusMsg");
     if (message) setStatusMsg(message);
   }, [searchParams]);
+
+  async function handleConfirmLocation() {
+    if (!selectedLocationId) return;
+    try {
+      const updated = await apiFetch<SpoolDetail>(`/api/spools/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ location_id: selectedLocationId }),
+      });
+      setSpool(updated);
+      setShowLocationPicker(false);
+      setShowScanner(false);
+      setStatusMsg(`位置已更新为：${updated.location?.name ?? "未知"}`);
+    } catch {
+      setStatusMsg("更新位置失败，请重试");
+    }
+  }
 
   async function handleScanResult(text: string) {
     setShowScanner(false);
@@ -120,14 +158,16 @@ export default function SpoolDetailPage() {
   const detailSections = getFilamentDetailSections(filament).filter((section) => hasVisibleItems(section.items));
 
   return (
-    <div className="mx-auto max-w-lg md:max-w-6xl">
-      <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
-        <button onClick={() => router.back()} className="text-muted-foreground">
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="text-lg font-semibold flex-1">线轴详情</h1>
-        <StatusBadge status={spool.status} />
-      </div>
+    <PageShell size="wide">
+      <PageHeader
+        title="线轴详情"
+        back={
+          <button onClick={() => router.back()} className="text-muted-foreground">
+            <ArrowLeft className="size-5" />
+          </button>
+        }
+        actions={<StatusBadge status={spool.status} />}
+      />
 
       {spool.status === "EMPTY" && (
         <Alert className="rounded-none border-x-0 border-t-0 bg-amber-50 border-amber-200">
@@ -139,7 +179,7 @@ export default function SpoolDetailPage() {
         <div className="mx-4 mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm text-center">{statusMsg}</div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
+      <div className="app-content grid grid-cols-1 gap-4 md:grid-cols-2">
         <DetailSectionCard title="线轴概览" className="md:col-span-2">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
@@ -186,10 +226,29 @@ export default function SpoolDetailPage() {
           <div className="space-y-3">
             {spool.status === "ACTIVE" ? (
               <>
-                <Button className="h-12 w-full text-base" variant="outline" onClick={() => setShowScanner(!showScanner)}>
-                  {showScanner ? "关闭扫码" : "修改位置"}
+                <Button className="h-12 w-full text-base" variant="outline" onClick={() => { setShowLocationPicker(!showLocationPicker); setShowScanner(false); }}>
+                  修改位置
                 </Button>
-                {showScanner ? <QRScanner onResult={handleScanResult} onClose={() => setShowScanner(false)} /> : null}
+                {showLocationPicker && (
+                  <div className="space-y-2">
+                    <div className="flex gap-2 flex-wrap">
+                      <select
+                        value={selectedLocationId}
+                        onChange={(e) => setSelectedLocationId(e.target.value)}
+                        className="flex-1 min-w-0 h-10 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <option value="">选择位置...</option>
+                        {locations.map((loc) => (
+                          <option key={loc.id} value={loc.id}>{loc.name}</option>
+                        ))}
+                      </select>
+                      <Button size="sm" className="h-10 px-4" onClick={handleConfirmLocation} disabled={!selectedLocationId}>确认</Button>
+                      <Button size="sm" variant="outline" className="h-10 px-4" onClick={() => setShowScanner(!showScanner)}>扫码</Button>
+                      <Button size="sm" variant="ghost" className="h-10 px-4" onClick={() => { setShowLocationPicker(false); setShowScanner(false); }}>取消</Button>
+                    </div>
+                    {showScanner && <QRScanner onResult={handleScanResult} onClose={() => setShowScanner(false)} />}
+                  </div>
+                )}
 
                 <Button className="h-12 w-full text-base" variant="outline" onClick={() => setShowLabelPrinter(!showLabelPrinter)}>
                   {showLabelPrinter ? "关闭标签预览" : "标签预览"}
@@ -235,6 +294,6 @@ export default function SpoolDetailPage() {
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteConfirm(false)}
       />
-    </div>
+    </PageShell>
   );
 }
