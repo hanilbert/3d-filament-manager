@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -29,56 +29,80 @@ interface GlobalScanDialogProps {
 
 type ScanStep = "scan" | "pick-spool" | "barcode-not-found";
 
+interface DialogState {
+  step: ScanStep;
+  scannerKey: number;
+  statusMsg: string;
+  errorMsg: string;
+  processing: boolean;
+  pendingLocationId: string | null;
+  activeSpools: ActiveSpool[];
+  loadingSpools: boolean;
+  assigningSpoolId: string | null;
+  missingUpcGtin: string | null;
+}
+
+type DialogAction =
+  | { type: "RESET" }
+  | { type: "RESTART"; errorMsg?: string }
+  | { type: "SCAN_START" }
+  | { type: "SCAN_LOCATION_START"; locationId: string }
+  | { type: "SPOOLS_LOADED"; spools: ActiveSpool[] }
+  | { type: "SCAN_ERROR"; errorMsg: string }
+  | { type: "SET_ERROR"; errorMsg: string }
+  | { type: "BARCODE_NOT_FOUND"; upcGtin: string; statusMsg: string }
+  | { type: "ASSIGNING_SPOOL"; spoolId: string }
+  | { type: "ASSIGN_FAILED"; errorMsg: string };
+
+const INITIAL_STATE: DialogState = {
+  step: "scan",
+  scannerKey: 0,
+  statusMsg: "",
+  errorMsg: "",
+  processing: false,
+  pendingLocationId: null,
+  activeSpools: [],
+  loadingSpools: false,
+  assigningSpoolId: null,
+  missingUpcGtin: null,
+};
+
+function dialogReducer(state: DialogState, action: DialogAction): DialogState {
+  switch (action.type) {
+    case "RESET":
+      return INITIAL_STATE;
+    case "RESTART":
+      return { ...INITIAL_STATE, scannerKey: state.scannerKey + 1, errorMsg: action.errorMsg ?? "" };
+    case "SCAN_START":
+      return { ...state, processing: true, statusMsg: "", errorMsg: "" };
+    case "SCAN_LOCATION_START":
+      return { ...state, processing: true, statusMsg: "", errorMsg: "", pendingLocationId: action.locationId, loadingSpools: true };
+    case "SPOOLS_LOADED":
+      return { ...state, step: "pick-spool", activeSpools: action.spools, loadingSpools: false, processing: false };
+    case "SCAN_ERROR":
+      return { ...INITIAL_STATE, scannerKey: state.scannerKey + 1, errorMsg: action.errorMsg };
+    case "SET_ERROR":
+      return { ...state, errorMsg: action.errorMsg };
+    case "BARCODE_NOT_FOUND":
+      return { ...state, step: "barcode-not-found", missingUpcGtin: action.upcGtin, statusMsg: action.statusMsg, processing: false };
+    case "ASSIGNING_SPOOL":
+      return { ...state, assigningSpoolId: action.spoolId, errorMsg: "" };
+    case "ASSIGN_FAILED":
+      return { ...state, assigningSpoolId: null, errorMsg: action.errorMsg };
+  }
+}
+
 export function GlobalScanDialog({ trigger }: GlobalScanDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<ScanStep>("scan");
-  const [scannerKey, setScannerKey] = useState(0);
-  const [statusMsg, setStatusMsg] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
-  const [processing, setProcessing] = useState(false);
-  const [pendingLocationId, setPendingLocationId] = useState<string | null>(null);
-  const [activeSpools, setActiveSpools] = useState<ActiveSpool[]>([]);
-  const [loadingSpools, setLoadingSpools] = useState(false);
-  const [assigningSpoolId, setAssigningSpoolId] = useState<string | null>(null);
-  const [missingUpcGtin, setMissingUpcGtin] = useState<string | null>(null);
-
-  function resetDialogState() {
-    setStep("scan");
-    setScannerKey(0);
-    setStatusMsg("");
-    setErrorMsg("");
-    setProcessing(false);
-    setPendingLocationId(null);
-    setActiveSpools([]);
-    setLoadingSpools(false);
-    setAssigningSpoolId(null);
-    setMissingUpcGtin(null);
-  }
-
-  function restartScanner(clearMessages = true) {
-    setStep("scan");
-    if (clearMessages) {
-      setStatusMsg("");
-      setErrorMsg("");
-    }
-    setPendingLocationId(null);
-    setActiveSpools([]);
-    setMissingUpcGtin(null);
-    setScannerKey((prev) => prev + 1);
-  }
+  const [state, dispatch] = useReducer(dialogReducer, INITIAL_STATE);
 
   useEffect(() => {
-    if (!open) {
-      resetDialogState();
-    }
+    if (!open) dispatch({ type: "RESET" });
   }, [open]);
 
   async function handleScanResult(text: string) {
-    if (processing) return;
-    setProcessing(true);
-    setStatusMsg("");
-    setErrorMsg("");
+    if (state.processing) return;
 
     const target = parseScanTarget(text);
 
@@ -89,23 +113,18 @@ export function GlobalScanDialog({ trigger }: GlobalScanDialogProps) {
     }
 
     if (target.type === "location") {
-      setPendingLocationId(target.locationId);
-      setLoadingSpools(true);
+      dispatch({ type: "SCAN_LOCATION_START", locationId: target.locationId });
       try {
         const spools = await apiFetch<ActiveSpool[]>("/api/spools?status=ACTIVE");
-        setActiveSpools(spools);
-        setStep("pick-spool");
+        dispatch({ type: "SPOOLS_LOADED", spools });
       } catch (err) {
-        setErrorMsg(err instanceof Error ? err.message : "加载线轴失败，请重试");
-        restartScanner(false);
-      } finally {
-        setLoadingSpools(false);
-        setProcessing(false);
+        dispatch({ type: "SCAN_ERROR", errorMsg: err instanceof Error ? err.message : "加载线轴失败，请重试" });
       }
       return;
     }
 
     if (target.type === "upc_gtin") {
+      dispatch({ type: "SCAN_START" });
       try {
         const items = await apiFetch<CatalogLookupItem[]>(
           `/api/filaments?upc_gtin=${encodeURIComponent(target.upcGtin)}`
@@ -115,51 +134,40 @@ export function GlobalScanDialog({ trigger }: GlobalScanDialogProps) {
           router.push(`/filaments/${items[0].id}`);
           return;
         }
-        setMissingUpcGtin(target.upcGtin);
-        setStatusMsg(`数据库未收录 UPC/GTIN：${target.upcGtin}`);
-        setStep("barcode-not-found");
+        dispatch({ type: "BARCODE_NOT_FOUND", upcGtin: target.upcGtin, statusMsg: `数据库未收录 UPC/GTIN：${target.upcGtin}` });
       } catch (err) {
-        setErrorMsg(err instanceof Error ? err.message : "UPC/GTIN 查询失败，请重试");
-        restartScanner(false);
-      } finally {
-        setProcessing(false);
+        dispatch({ type: "SCAN_ERROR", errorMsg: err instanceof Error ? err.message : "UPC/GTIN 查询失败，请重试" });
       }
       return;
     }
 
-    setErrorMsg("无法识别的二维码/条码");
-    setProcessing(false);
-    setScannerKey((prev) => prev + 1);
+    dispatch({ type: "SCAN_ERROR", errorMsg: "无法识别的二维码/条码" });
   }
 
   async function handleAssignLocation(spoolId: string) {
-    if (!pendingLocationId) {
-      setErrorMsg("缺少位置信息，请重新扫码");
-      restartScanner();
+    if (!state.pendingLocationId) {
+      dispatch({ type: "RESTART", errorMsg: "缺少位置信息，请重新扫码" });
       return;
     }
 
-    setAssigningSpoolId(spoolId);
-    setErrorMsg("");
+    dispatch({ type: "ASSIGNING_SPOOL", spoolId });
 
     try {
       await apiFetch(`/api/spools/${spoolId}`, {
         method: "PATCH",
-        body: JSON.stringify({ location_id: pendingLocationId }),
+        body: JSON.stringify({ location_id: state.pendingLocationId }),
       });
       setOpen(false);
       router.push(`/spools/${spoolId}?statusMsg=${encodeURIComponent("位置已更新")}`);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "分配位置失败，请重试");
-    } finally {
-      setAssigningSpoolId(null);
+      dispatch({ type: "ASSIGN_FAILED", errorMsg: err instanceof Error ? err.message : "分配位置失败，请重试" });
     }
   }
 
   function handleCreateFilament() {
-    if (!missingUpcGtin) return;
+    if (!state.missingUpcGtin) return;
     setOpen(false);
-    router.push(`/filaments/new?upc_gtin=${encodeURIComponent(missingUpcGtin)}`);
+    router.push(`/filaments/new?upc_gtin=${encodeURIComponent(state.missingUpcGtin)}`);
   }
 
   return (
@@ -173,47 +181,47 @@ export function GlobalScanDialog({ trigger }: GlobalScanDialogProps) {
           </DialogDescription>
         </DialogHeader>
 
-        {step === "scan" && (
+        {state.step === "scan" && (
           <div className="space-y-3">
-            {statusMsg ? (
+            {state.statusMsg && (
               <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                {statusMsg}
+                {state.statusMsg}
               </div>
-            ) : null}
-            {errorMsg ? (
+            )}
+            {state.errorMsg && (
               <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                {errorMsg}
+                {state.errorMsg}
               </div>
-            ) : null}
+            )}
             <QRScanner
-              key={scannerKey}
+              key={state.scannerKey}
               onResult={handleScanResult}
               onClose={() => setOpen(false)}
               mode="qr-and-barcode"
-              onStartError={setErrorMsg}
+              onStartError={(msg) => dispatch({ type: "SET_ERROR", errorMsg: msg })}
             />
           </div>
         )}
 
-        {step === "pick-spool" && (
+        {state.step === "pick-spool" && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
               已识别位置二维码，请选择要分配该位置的线轴。
             </p>
-            {errorMsg ? (
+            {state.errorMsg && (
               <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                {errorMsg}
+                {state.errorMsg}
               </div>
-            ) : null}
-            {loadingSpools ? (
+            )}
+            {state.loadingSpools ? (
               <p className="py-4 text-center text-sm text-muted-foreground">加载线轴中...</p>
-            ) : activeSpools.length === 0 ? (
+            ) : state.activeSpools.length === 0 ? (
               <p className="rounded-md border border-border px-3 py-6 text-center text-sm text-muted-foreground">
                 当前没有 ACTIVE 线轴可分配。
               </p>
             ) : (
               <div className="max-h-[320px] space-y-2 overflow-auto pr-1">
-                {activeSpools.map((spool) => (
+                {state.activeSpools.map((spool) => (
                   <div
                     key={spool.id}
                     className="flex items-center justify-between rounded-md border border-border px-3 py-2"
@@ -233,30 +241,30 @@ export function GlobalScanDialog({ trigger }: GlobalScanDialogProps) {
                       type="button"
                       size="sm"
                       onClick={() => handleAssignLocation(spool.id)}
-                      disabled={assigningSpoolId !== null}
+                      disabled={state.assigningSpoolId !== null}
                     >
-                      {assigningSpoolId === spool.id ? "分配中..." : "分配"}
+                      {state.assigningSpoolId === spool.id ? "分配中..." : "分配"}
                     </Button>
                   </div>
                 ))}
               </div>
             )}
-            <Button type="button" variant="outline" className="w-full" onClick={() => restartScanner()}>
+            <Button type="button" variant="outline" className="w-full" onClick={() => dispatch({ type: "RESTART" })}>
               继续扫码
             </Button>
           </div>
         )}
 
-        {step === "barcode-not-found" && (
+        {state.step === "barcode-not-found" && (
           <div className="space-y-3">
             <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
-              {statusMsg || "数据库中未找到该 UPC/GTIN"}
+              {state.statusMsg || "数据库中未找到该 UPC/GTIN"}
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <Button type="button" onClick={handleCreateFilament}>
                 去新建耗材
               </Button>
-              <Button type="button" variant="outline" onClick={() => restartScanner()}>
+              <Button type="button" variant="outline" onClick={() => dispatch({ type: "RESTART" })}>
                 继续扫码
               </Button>
             </div>
