@@ -1,7 +1,7 @@
 # Spool Tracker — 技术架构文档
 
-**版本**: v1.1  
-**日期**: 2026-02-23  
+**版本**: v1.2
+**日期**: 2026-02-28
 **状态**: 与当前代码实现同步
 
 ---
@@ -15,7 +15,7 @@ Browser (Mobile/Desktop)
   └─ QR Scan / QR Render
 
 Next.js 16 App
-  ├─ middleware.ts (路由鉴权)
+  ├─ src/middleware.ts (路由鉴权)
   ├─ src/app/* (页面与 API)
   ├─ src/lib/auth.ts (Token 生成/校验)
   ├─ src/lib/api-auth.ts (API 认证守卫)
@@ -37,26 +37,23 @@ src/
     api/
       auth/login
       auth/logout
-      catalog
-      catalog/[id]
-      catalog/brand-rename
+      filaments
+      filaments/[id]
+      filaments/brand-rename
       spools
       spools/[id]
       locations
       locations/[id]
       upload/logo
       logos/[filename]
+    filaments/
     spools/
-    spool/[id]/
-    spool/[id]/print/
-    catalog/
     locations/
     location/[id]/
     location/[id]/edit/
     location/[id]/print/
   components/
   lib/
-  middleware.ts
 prisma/
   schema.prisma
   migrations/
@@ -68,8 +65,8 @@ prisma/
 
 ### 3.1 数据模型
 
-- `GlobalFilament`：耗材字典，包含基础字段 + 扩展打印参数
-- `Spool`：料卷实例，关联 `GlobalFilament` 与 `Location`
+- `Filament`：耗材字典（SPU）
+- `Spool`：料卷实例（SKU），关联 `Filament` 与 `Location`
 - `Location`：位置实体，支持 `type/is_default/ams_*`
 
 ### 3.2 状态设计
@@ -95,16 +92,16 @@ prisma/
 ### 4.2 双通道鉴权
 
 - 页面路由：`src/middleware.ts` 从 Cookie 校验 `spool_tracker_token`
-- API 路由：`src/lib/api-auth.ts` 校验 Bearer Token
+- API 路由：`src/lib/api-auth.ts` 优先校验 Bearer Token，缺失时回退 Cookie
 
 ### 4.3 客户端存储
 
-- `localStorage.spool_tracker_token`：供 `apiFetch` 自动注入 Authorization
-- Cookie `spool_tracker_token`：供 middleware 拦截页面访问
+- 使用 HttpOnly Cookie `spool_tracker_token`
+- `apiFetch` 使用 `credentials: "same-origin"` 自动携带 Cookie
 
 ### 4.4 过期行为
 
-- `apiFetch` 收到 401 会清理本地 Token 和 Cookie，并跳转 `/login`
+- `apiFetch` 收到 401 时跳转 `/login`
 
 ---
 
@@ -113,7 +110,7 @@ prisma/
 ### 5.1 接口分组
 
 - `auth`：登录/登出
-- `catalog`：字典 CRUD + 分组查询 + 品牌重命名
+- `filaments`：字典 CRUD + 分组查询 + 品牌重命名
 - `spools`：列表/创建/详情/更新/删除
 - `locations`：列表/创建/详情/更新/删除
 - `upload/logo` & `logos/[filename]`：Logo 文件上传与读取
@@ -121,7 +118,7 @@ prisma/
 ### 5.2 鉴权约束
 
 - 公开接口：`/api/auth/login`、`/api/auth/logout`、`/api/logos/*`
-- 其余接口要求 Bearer Token
+- 其余接口要求有效 token
 
 ### 5.3 文件上传策略
 
@@ -140,18 +137,18 @@ prisma/
 - 桌面端：`SideNav`
 - 在 `/login` 与 `*/print` 页面隐藏导航
 
-### 6.2 Catalog 交互
+### 6.2 Filament 交互
 
-- 品牌总览：`/catalog`
-- 材料总览：`/catalog/materials`
-- 支持 300ms debounce 搜索
-- 支持品牌/材料分层浏览与聚合统计
+- 品牌总览：`/filaments`
+- 材料总览：`/filaments/materials`
+- 支持搜索、分层浏览与聚合统计
 
 ### 6.3 Spool 交互
 
+- 列表页按 Filament 聚合展示
 - 详情页可扫码改位置
 - `ACTIVE` 和 `EMPTY` 展示不同操作集
-- 标签组件支持参数槽位选择并导出 PNG
+- 保留兼容路由 `/spools/details/[id]`，内部重定向到 `/filaments/[id]`
 
 ### 6.4 Location 交互
 
@@ -165,19 +162,19 @@ prisma/
 
 ### 7.1 料卷标签
 
-- 页面：`/spool/{id}/print`
+- 页面：`/spools/[id]/print`
 - 组件：`spool-label-printer.tsx`
 - 形式：SVG 预览 + `html-to-image` 导出 PNG
 
 ### 7.2 位置标签
 
-- 页面：`/location/{id}/print`
+- 页面：`/location/[id]/print`
 - 规格：40mm x 30mm
 - 自动调用 `window.print()`
 
 ### 7.3 二维码内容
 
-- 料卷：`{NEXT_PUBLIC_BASE_URL}/spool/{id}`
+- 料卷：`{NEXT_PUBLIC_BASE_URL}/spools/{id}`
 - 位置：`{NEXT_PUBLIC_BASE_URL}/location/{id}`
 
 ---
@@ -194,6 +191,5 @@ prisma/
 ## 9. 已知限制与后续方向
 
 1. 单密码模式，不含多用户与权限控制。
-2. `is_default` 目前仅标记默认位置，未自动参与新料卷分配。
-3. 品牌重命名接口与前端调用方法存在不一致，需统一。
-4. SQLite 不适合高并发写入场景。
+2. `is_default` 当前仅标记默认位置，未自动参与新料卷分配。
+3. SQLite 不适合高并发写入场景。

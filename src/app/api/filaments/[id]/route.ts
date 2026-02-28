@@ -5,6 +5,10 @@ import { requireAuth } from "@/lib/api-auth";
 import { FILAMENT_ALLOWED_FIELDS } from "@/lib/types";
 import { findSharedBrandLogoUrl } from "@/lib/brand-logo";
 import { parseBodyUpcGtin } from "@/lib/upc-gtin";
+import { filamentPatchSchema } from "@/lib/api-schemas";
+import { readJsonWithLimit } from "@/lib/http";
+
+const MAX_JSON_BODY_BYTES = 64 * 1024;
 
 export async function GET(
   request: NextRequest,
@@ -45,7 +49,23 @@ export async function PATCH(
 
   const { id } = await params;
   try {
-    const body = await request.json();
+    const bodyResult = await readJsonWithLimit<unknown>(request, {
+      maxBytes: MAX_JSON_BODY_BYTES,
+    });
+    if (!bodyResult.ok) {
+      return NextResponse.json(
+        { error: bodyResult.error },
+        { status: bodyResult.status }
+      );
+    }
+
+    const parsed = filamentPatchSchema.safeParse(bodyResult.data);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "请求格式错误" }, { status: 400 });
+    }
+
+    const body = parsed.data;
+    const bodyRecord = body as Record<string, string | null | undefined>;
     const current = await prisma.filament.findUnique({
       where: { id },
       select: { id: true, brand: true, logo_url: true },
@@ -55,10 +75,10 @@ export async function PATCH(
     const data: Record<string, string | null> = {};
     for (const f of FILAMENT_ALLOWED_FIELDS) {
       if (f === "upc_gtin") continue;
-      if (f in body) data[f] = body[f] || null;
+      if (f in bodyRecord) data[f] = bodyRecord[f] || null;
     }
 
-    const upcGtin = parseBodyUpcGtin(body.upc_gtin);
+    const upcGtin = parseBodyUpcGtin(bodyRecord.upc_gtin);
     if (upcGtin.error) {
       return NextResponse.json({ error: upcGtin.error }, { status: 400 });
     }

@@ -4,40 +4,65 @@ import { prisma } from "@/lib/db";
 import { formatNumber } from "@/lib/utils";
 
 async function getStats() {
-  const [filamentCount, spoolActiveCount, spoolEmptyCount, locationCount, brandsRaw, materialsRaw] =
+  const [
+    filamentCount,
+    spoolActiveCount,
+    spoolEmptyCount,
+    locationCount,
+    distinctCounts,
+    topBrandRows,
+    topMaterialRows,
+  ] =
     await Promise.all([
       prisma.filament.count(),
       prisma.spool.count({ where: { status: "ACTIVE" } }),
       prisma.spool.count({ where: { status: "EMPTY" } }),
       prisma.location.count(),
-      prisma.filament.findMany({
-        select: { brand: true, _count: { select: { spools: true } } },
-      }),
-      prisma.filament.findMany({ select: { material: true } }),
+      prisma.$queryRaw<Array<{ brand_count: number | bigint; material_count: number | bigint }>>`
+        SELECT
+          COUNT(DISTINCT f.brand) AS brand_count,
+          COUNT(DISTINCT f.material) AS material_count
+        FROM "Filament" f
+      `,
+      prisma.$queryRaw<Array<{ brand: string; spool_count: number | bigint }>>`
+        SELECT
+          f.brand AS brand,
+          COUNT(s.id) AS spool_count
+        FROM "Filament" f
+        LEFT JOIN "Spool" s ON s.filament_id = f.id
+        GROUP BY f.brand
+        ORDER BY spool_count DESC, f.brand ASC
+        LIMIT 1
+      `,
+      prisma.$queryRaw<Array<{ material: string; count: number | bigint }>>`
+        SELECT
+          f.material AS material,
+          COUNT(*) AS count
+        FROM "Filament" f
+        GROUP BY f.material
+        ORDER BY count DESC, f.material ASC
+        LIMIT 1
+      `,
     ]);
 
-  const brandMap = new Map<string, number>();
-  for (const f of brandsRaw) {
-    brandMap.set(f.brand, (brandMap.get(f.brand) ?? 0) + f._count.spools);
-  }
-  const topBrandEntry = [...brandMap.entries()].sort((a, b) => b[1] - a[1])[0];
-
-  const materialMap = new Map<string, number>();
-  for (const f of materialsRaw) {
-    materialMap.set(f.material, (materialMap.get(f.material) ?? 0) + 1);
-  }
-  const topMaterialEntry = [...materialMap.entries()].sort((a, b) => b[1] - a[1])[0];
+  const countRow = distinctCounts[0];
+  const topBrandRow = topBrandRows[0];
+  const topMaterialRow = topMaterialRows[0];
+  const brandCount = countRow ? Number(countRow.brand_count) : 0;
+  const materialCount = countRow ? Number(countRow.material_count) : 0;
 
   return {
     filamentCount,
-    brandCount: brandMap.size,
-    materialCount: materialMap.size,
+    brandCount,
+    materialCount,
     spoolActiveCount,
     spoolEmptyCount,
     locationCount,
-    topBrand: topBrandEntry ? { name: topBrandEntry[0], spools: topBrandEntry[1] } : null,
-    topMaterial: topMaterialEntry
-      ? { name: topMaterialEntry[0], count: topMaterialEntry[1] }
+    topBrand: topBrandRow
+      ? { name: topBrandRow.brand, spools: Number(topBrandRow.spool_count) }
+      : null,
+    topMaterial: topMaterialRow
+      ? { name: topMaterialRow.material, count: Number(topMaterialRow.count) }
       : null,
   };
 }

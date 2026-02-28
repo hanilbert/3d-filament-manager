@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
 import { isLocationType } from "@/lib/location-types";
+import { locationPatchSchema } from "@/lib/api-schemas";
+import { readJsonWithLimit } from "@/lib/http";
+
+const MAX_JSON_BODY_BYTES = 64 * 1024;
 
 function logApiError(context: string, error: unknown) {
   if (process.env.NODE_ENV !== "test") {
     console.error(`[api/locations/[id]] ${context}`, error);
   }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export async function GET(
@@ -55,11 +55,22 @@ export async function PATCH(
 
   const { id } = await params;
   try {
-    const body = await request.json();
-    if (!isRecord(body)) {
+    const bodyResult = await readJsonWithLimit<unknown>(request, {
+      maxBytes: MAX_JSON_BODY_BYTES,
+    });
+    if (!bodyResult.ok) {
+      return NextResponse.json(
+        { error: bodyResult.error },
+        { status: bodyResult.status }
+      );
+    }
+
+    const parsed = locationPatchSchema.safeParse(bodyResult.data);
+    if (!parsed.success) {
       return NextResponse.json({ error: "请求格式错误" }, { status: 400 });
     }
 
+    const body = parsed.data;
     const { name, type, is_default, printer_name, ams_unit, ams_slot } = body;
     const normalizedName = typeof name === "string" ? name.trim() : undefined;
     const normalizedType = typeof type === "string" ? type : undefined;

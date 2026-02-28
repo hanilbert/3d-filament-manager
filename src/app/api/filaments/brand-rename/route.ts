@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
+import { brandRenameBodySchema } from "@/lib/api-schemas";
+import { readJsonWithLimit } from "@/lib/http";
+
+const MAX_JSON_BODY_BYTES = 64 * 1024;
 
 function logApiError(context: string, error: unknown) {
   if (process.env.NODE_ENV !== "test") {
@@ -13,15 +17,23 @@ export async function PATCH(request: NextRequest) {
   if (authError) return authError;
 
   try {
-    const body = await request.json();
-    if (!body || typeof body !== "object" || Array.isArray(body)) {
+    const bodyResult = await readJsonWithLimit<unknown>(request, {
+      maxBytes: MAX_JSON_BODY_BYTES,
+    });
+    if (!bodyResult.ok) {
+      return NextResponse.json(
+        { error: bodyResult.error },
+        { status: bodyResult.status }
+      );
+    }
+
+    const parsed = brandRenameBodySchema.safeParse(bodyResult.data);
+    if (!parsed.success) {
       return NextResponse.json({ error: "请求格式错误" }, { status: 400 });
     }
 
-    const oldBrandRaw = (body as { oldBrand?: unknown }).oldBrand;
-    const newBrandRaw = (body as { newBrand?: unknown }).newBrand;
-    const oldBrand = typeof oldBrandRaw === "string" ? oldBrandRaw.trim() : "";
-    const newBrand = typeof newBrandRaw === "string" ? newBrandRaw.trim() : "";
+    const oldBrand = parsed.data.oldBrand.trim();
+    const newBrand = parsed.data.newBrand.trim();
 
     if (!oldBrand || !newBrand) {
       return NextResponse.json({ error: "缺少参数" }, { status: 400 });

@@ -3,16 +3,15 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
 import { findSharedBrandLogoUrl } from "@/lib/brand-logo";
 import { withFallbackFilamentLogo } from "@/lib/spool-detail";
-import { ensureOrphanSpoolFilamentsRepaired } from "@/lib/data-repair";
+import { spoolPatchSchema } from "@/lib/api-schemas";
+import { readJsonWithLimit } from "@/lib/http";
+
+const MAX_JSON_BODY_BYTES = 64 * 1024;
 
 function logApiError(context: string, error: unknown) {
   if (process.env.NODE_ENV !== "test") {
     console.error(`[api/spools/[id]] ${context}`, error);
   }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export async function GET(
@@ -21,10 +20,6 @@ export async function GET(
 ) {
   const authError = await requireAuth(request);
   if (authError) return authError;
-  await ensureOrphanSpoolFilamentsRepaired().catch((error) => {
-    logApiError("orphan repair skipped after failure", error);
-    return 0;
-  });
 
   const { id } = await params;
   const spool = await prisma.spool.findUnique({
@@ -48,47 +43,40 @@ export async function PATCH(
 ) {
   const authError = await requireAuth(request);
   if (authError) return authError;
-  await ensureOrphanSpoolFilamentsRepaired().catch((error) => {
-    logApiError("orphan repair skipped after failure", error);
-    return 0;
-  });
 
   const { id } = await params;
   try {
-    const body = await request.json();
-    if (!isRecord(body)) {
+    const bodyResult = await readJsonWithLimit<unknown>(request, {
+      maxBytes: MAX_JSON_BODY_BYTES,
+    });
+    if (!bodyResult.ok) {
+      return NextResponse.json(
+        { error: bodyResult.error },
+        { status: bodyResult.status }
+      );
+    }
+
+    const parsed = spoolPatchSchema.safeParse(bodyResult.data);
+    if (!parsed.success) {
       return NextResponse.json({ error: "请求格式错误" }, { status: 400 });
     }
 
-    if (
-      body.status !== undefined &&
-      (typeof body.status !== "string" || !["ACTIVE", "EMPTY"].includes(body.status))
-    ) {
-      return NextResponse.json({ error: "status 必须为 ACTIVE 或 EMPTY" }, { status: 400 });
-    }
-
-    if (
-      body.location_id !== undefined &&
-      body.location_id !== null &&
-      typeof body.location_id !== "string"
-    ) {
-      return NextResponse.json({ error: "location_id 必须为字符串或 null" }, { status: 400 });
-    }
-
+    const body = parsed.data;
+    const bodyRecord = body as Record<string, unknown>;
     const allowedFields = ["location_id", "status"];
     const data: Record<string, unknown> = {};
     for (const key of allowedFields) {
-      if (key in body) data[key] = body[key];
+      if (key in bodyRecord) data[key] = bodyRecord[key];
     }
 
-    if ("metadata" in body) {
-      if (body.metadata === null) {
+    if ("metadata" in bodyRecord) {
+      if (bodyRecord.metadata === null) {
         data.metadata = null;
       } else {
         const metaString =
-          typeof body.metadata === "string"
-            ? body.metadata
-            : JSON.stringify(body.metadata);
+          typeof bodyRecord.metadata === "string"
+            ? bodyRecord.metadata
+            : JSON.stringify(bodyRecord.metadata);
         if (metaString.length > 10000) {
           return NextResponse.json(
             { error: "metadata 不能超过 10KB" },
