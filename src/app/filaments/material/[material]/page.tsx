@@ -5,6 +5,8 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ColorSwatch } from "@/components/ColorSwatch";
+import { PageHeader } from "@/components/layout/page-header";
+import { PageShell } from "@/components/layout/page-shell";
 import { apiFetch } from "@/lib/fetch";
 
 interface FilamentItem {
@@ -29,7 +31,7 @@ export default function MaterialDetailPage() {
   useEffect(() => {
     async function load() {
       try {
-        const query = new URLSearchParams({ material });
+        const query = new URLSearchParams({ material, exact: "1" });
         if (variant) query.set("variant", variant);
         const data = await apiFetch<FilamentItem[]>(`/api/filaments?${query.toString()}`);
         setItems(data);
@@ -41,13 +43,17 @@ export default function MaterialDetailPage() {
   }, [material, variant]);
 
   return (
-    <div className="mx-auto max-w-lg md:max-w-4xl">
-      <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
-        <button onClick={() => router.back()} className="text-muted-foreground"><ArrowLeft className="w-5 h-5" /></button>
-        <h1 className="text-lg font-semibold">{variant ? `${material} · ${variant}` : material}</h1>
-      </div>
+    <PageShell size="content">
+      <PageHeader
+        title={variant ? `${material} · ${variant}` : material}
+        back={
+          <button onClick={() => router.back()} className="text-muted-foreground">
+            <ArrowLeft className="size-5" />
+          </button>
+        }
+      />
 
-      <div className="p-4 space-y-4">
+      <div className="app-content">
         {loading ? (
           <p className="text-center text-muted-foreground py-8">加载中...</p>
         ) : items.length === 0 ? (
@@ -69,6 +75,6 @@ export default function MaterialDetailPage() {
           </div>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }

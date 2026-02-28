@@ -50,7 +50,7 @@ export function SideNav() {
     <nav className="flex h-full flex-col border-r border-border/80 bg-background/95 backdrop-blur">
       <div className="border-b border-border/80 px-4 py-5">
         <div className="flex items-center justify-between gap-2">
-          <h1 className="text-base font-semibold tracking-tight">线轴管家</h1>
+          <h1 className="text-base font-semibold tracking-tight">耗材管家</h1>
           <GlobalScanDialog
             trigger={
               <Button type="button" size="sm" variant="outline" className="h-8 px-2.5">
@@ -64,14 +64,17 @@ export function SideNav() {
       </div>
 
       <div className="flex-1 space-y-1 py-2">
-        <SectionLabel>工作区</SectionLabel>
-        <div className="space-y-0.5">
+        <div className="space-y-0.5 px-0 pb-1">
           <NavItem
             href="/"
             label="主页"
             active={pathname === "/"}
             icon={<Home className="size-4" />}
           />
+        </div>
+
+        <SectionLabel>工作区</SectionLabel>
+        <div className="space-y-0.5">
           <NavItem
             href="/spools"
             label="线轴"

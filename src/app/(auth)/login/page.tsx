@@ -59,7 +59,7 @@ function LoginPageContent() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Spool Tracker</CardTitle>
+          <CardTitle className="text-2xl">耗材管家</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">3D 打印耗材管理系统</p>
         </CardHeader>
         <CardContent>

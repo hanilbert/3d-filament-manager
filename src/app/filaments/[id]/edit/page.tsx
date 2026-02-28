@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { CatalogForm } from "@/components/CatalogForm";
+import { PageHeader } from "@/components/layout/page-header";
+import { PageShell } from "@/components/layout/page-shell";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -12,10 +14,8 @@ export default async function EditCatalogPage({ params }: Props) {
   if (!item) notFound();
 
   return (
-    <div className="mx-auto max-w-lg md:max-w-2xl">
-      <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3">
-        <h1 className="text-lg font-semibold">编辑耗材</h1>
-      </div>
+    <PageShell size="form">
+      <PageHeader title="编辑耗材" />
       <CatalogForm
         catalogId={id}
         initialValues={{
@@ -31,6 +31,6 @@ export default async function EditCatalogPage({ params }: Props) {
           logo_url: item.logo_url ?? "",
         }}
       />
-    </div>
+    </PageShell>
   );
 }

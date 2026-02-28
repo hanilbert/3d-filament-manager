@@ -4,13 +4,12 @@ export async function findSharedBrandLogoUrl(
   brand: string,
   excludeId?: string
 ): Promise<string | null> {
-  const normalized = brand.trim().toLowerCase();
+  const normalized = brand.trim();
   if (!normalized) return null;
 
-  // SQLite LIKE is case-insensitive for ASCII; use contains for broader match
   const result = await prisma.filament.findFirst({
     where: {
-      brand: { contains: brand.trim() },
+      brand: { equals: normalized },
       logo_url: { not: null },
       ...(excludeId ? { NOT: { id: excludeId } } : {}),
     },
@@ -18,7 +17,7 @@ export async function findSharedBrandLogoUrl(
     orderBy: { updated_at: "desc" },
   });
 
-  // Double-check normalized match in case contains returned a partial match
+  // 仅返回同品牌下最近一次已配置的 logo
   if (!result?.logo_url) return null;
   return result.logo_url;
 }

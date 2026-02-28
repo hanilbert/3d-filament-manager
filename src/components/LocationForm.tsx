@@ -79,7 +79,7 @@ export function LocationForm({ initialValues, locationId }: LocationFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 space-y-4">
+    <form onSubmit={handleSubmit} className="app-content space-y-4">
       {/* 类型选择 */}
       <div className="space-y-2">
         <Label>位置类型 *</Label>

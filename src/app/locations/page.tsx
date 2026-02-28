@@ -5,6 +5,8 @@ import Link from "next/link";
 import { apiFetch } from "@/lib/fetch";
 import { getLocationType } from "@/lib/location-types";
 import { ColorSwatch } from "@/components/ColorSwatch";
+import { PageHeader } from "@/components/layout/page-header";
+import { PageShell } from "@/components/layout/page-shell";
 
 interface SpoolInfo {
   id: string;
@@ -160,15 +162,17 @@ export default function LocationsPage() {
   }, {});
 
   return (
-    <div className="mx-auto max-w-lg md:max-w-4xl">
-      <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-semibold">位置</h1>
-        <Link href="/locations/new" className="text-sm text-primary font-medium">
-          + 新建
-        </Link>
-      </div>
+    <PageShell size="content">
+      <PageHeader
+        title="位置"
+        actions={
+          <Link href="/locations/new" className="text-sm font-medium text-primary">
+            + 新建
+          </Link>
+        }
+      />
 
-      <div className="p-4 space-y-6">
+      <div className="app-content">
         {loading ? (
           <p className="text-center text-muted-foreground py-8">加载中...</p>
         ) : error ? (
@@ -252,6 +256,6 @@ export default function LocationsPage() {
           </>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }

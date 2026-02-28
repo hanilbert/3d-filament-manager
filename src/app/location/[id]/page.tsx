@@ -9,6 +9,8 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DetailKeyValueList } from "@/components/DetailKeyValueList";
 import { DetailMetricGrid } from "@/components/DetailMetricGrid";
 import { DetailSectionCard } from "@/components/DetailSectionCard";
+import { PageHeader } from "@/components/layout/page-header";
+import { PageShell } from "@/components/layout/page-shell";
 import { apiFetch } from "@/lib/fetch";
 import { getLocationType } from "@/lib/location-types";
 import { LocationLabelPrinter } from "./print/location-label-printer";
@@ -70,16 +72,17 @@ export default function LocationDetailPage() {
   const typeInfo = getLocationType(loc.type);
 
   return (
-    <div className="mx-auto max-w-lg md:max-w-6xl">
-      {/* 顶部 */}
-      <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
-        <button onClick={() => router.back()} className="text-muted-foreground">
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <h1 className="text-lg font-semibold flex-1 truncate">{loc.name}</h1>
-      </div>
+    <PageShell size="wide">
+      <PageHeader
+        title={loc.name}
+        back={
+          <button onClick={() => router.back()} className="text-muted-foreground">
+            <ArrowLeft className="size-5" />
+          </button>
+        }
+      />
 
-      <div className="p-4 space-y-4 md:grid md:grid-cols-2 md:gap-6 md:space-y-0">
+      <div className="app-content space-y-4 md:grid md:grid-cols-2 md:gap-6 md:space-y-0">
         {/* 左列 */}
         <div className="space-y-4">
           {/* 线轴状态卡片 */}
@@ -193,6 +196,6 @@ export default function LocationDetailPage() {
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteConfirm(false)}
       />
-    </div>
+    </PageShell>
   );
 }

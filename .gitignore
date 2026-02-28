@@ -50,6 +50,8 @@ next-env.d.ts
 
 # local drafts and claude workspace
 _drafts/
+.drafts/
 .claude/
+memory/
 
 /src/generated/prisma

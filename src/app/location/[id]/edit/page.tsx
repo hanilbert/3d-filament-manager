@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { LocationForm } from "@/components/LocationForm";
+import { PageHeader } from "@/components/layout/page-header";
+import { PageShell } from "@/components/layout/page-shell";
 import { apiFetch } from "@/lib/fetch";
 
 interface LocationData {
@@ -38,13 +40,15 @@ export default function EditLocationPage() {
   if (!data) return <div className="p-4 text-center text-muted-foreground">位置不存在</div>;
 
   return (
-    <div className="mx-auto max-w-lg md:max-w-2xl">
-      <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
-        <button onClick={() => router.back()} className="text-muted-foreground">
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="text-lg font-semibold">编辑位置</h1>
-      </div>
+    <PageShell size="form">
+      <PageHeader
+        title="编辑位置"
+        back={
+          <button onClick={() => router.back()} className="text-muted-foreground">
+            <ArrowLeft className="size-5" />
+          </button>
+        }
+      />
       <LocationForm
         locationId={id}
         initialValues={{
@@ -56,6 +60,6 @@ export default function EditLocationPage() {
           ams_slot: data.ams_slot ?? "",
         }}
       />
-    </div>
+    </PageShell>
   );
 }

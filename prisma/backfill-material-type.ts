@@ -16,18 +16,13 @@ async function main() {
     select: { id: true, variant: true },
   });
 
-  let updated = 0;
   for (const row of missingMaterialRows) {
     const inferred = row.variant.trim().split(/\s+/)[0] || "UNKNOWN";
     await prisma.filament.update({
       where: { id: row.id },
       data: { material: inferred },
     });
-    updated += 1;
-    console.log(`Set material="${inferred}" from variant="${row.variant}" (id: ${row.id})`);
   }
-
-  console.log(`\nDone. Processed ${updated} backfills.`);
 }
 
 main()

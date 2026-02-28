@@ -6,6 +6,8 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/layout/page-header";
+import { PageShell } from "@/components/layout/page-shell";
 import { apiFetch } from "@/lib/fetch";
 
 const SLOT_COUNT = 4;
@@ -67,18 +69,18 @@ export default function BulkAmsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg md:max-w-2xl">
-      <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
-        <button onClick={() => router.back()} className="text-muted-foreground">
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div>
-          <h1 className="text-lg font-semibold">批量添加 AMS 插槽</h1>
-          <p className="text-xs text-muted-foreground">快速一次性创建多个 AMS 插槽位置</p>
-        </div>
-      </div>
+    <PageShell size="form">
+      <PageHeader
+        title="批量添加 AMS 插槽"
+        subtitle="快速一次性创建多个 AMS 插槽位置"
+        back={
+          <button onClick={() => router.back()} className="text-muted-foreground">
+            <ArrowLeft className="size-5" />
+          </button>
+        }
+      />
 
-      <form onSubmit={handleSubmit} className="p-4 space-y-5">
+      <form onSubmit={handleSubmit} className="app-content space-y-5">
         {/* 打印机名称 */}
         <div className="space-y-2">
           <Label htmlFor="printer_name">打印机名称 *</Label>
@@ -171,6 +173,6 @@ export default function BulkAmsPage() {
             : `创建 ${selectedCount} 个 AMS 插槽`}
         </Button>
       </form>
-    </div>
+    </PageShell>
   );
 }

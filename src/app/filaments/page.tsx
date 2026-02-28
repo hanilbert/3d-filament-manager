@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { ColorSwatch } from "@/components/ColorSwatch";
+import { PageHeader } from "@/components/layout/page-header";
+import { PageShell } from "@/components/layout/page-shell";
 import { apiFetch } from "@/lib/fetch";
 
 interface BrandGroup {
@@ -52,13 +54,17 @@ export default function FilamentsPage() {
   }, [q, isSearching]);
 
   return (
-    <div className="mx-auto max-w-lg md:max-w-5xl">
-      <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-semibold">品牌</h1>
-        <Link href="/filaments/new" className="text-sm text-primary font-medium">+ 新建</Link>
-      </div>
+    <PageShell size="content">
+      <PageHeader
+        title="品牌"
+        actions={
+          <Link href="/filaments/new" className="text-sm font-medium text-primary">
+            + 新建
+          </Link>
+        }
+      />
 
-      <div className="p-4 space-y-3">
+      <div className="app-content">
         <div className="flex gap-2">
           <Input placeholder="搜索品牌、材料、细分、颜色..." value={q} onChange={(e) => setQ(e.target.value)} className="h-11 flex-1" />
         </div>
@@ -88,7 +94,7 @@ export default function FilamentsPage() {
           <BrandTable brands={brands} />
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }
 

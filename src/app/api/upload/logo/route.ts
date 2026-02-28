@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/api-auth";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { v4 as uuidv4 } from "uuid";
+import { detectImageExtension } from "@/lib/image-signature";
 
 // SVG removed — stored XSS risk (S-C3)
 const ALLOWED_TYPES: Record<string, string> = {
@@ -40,6 +41,10 @@ export async function POST(request: NextRequest) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const detectedExt = detectImageExtension(buffer);
+    if (!detectedExt || detectedExt !== ext) {
+      return NextResponse.json({ error: "文件内容与类型不匹配" }, { status: 400 });
+    }
 
     const logosDir = join(process.cwd(), "data", "logos");
     if (!logosDirReady) {
@@ -51,7 +56,10 @@ export async function POST(request: NextRequest) {
     await writeFile(join(logosDir, filename), buffer);
 
     return NextResponse.json({ url: `/api/logos/${filename}` }, { status: 201 });
-  } catch {
+  } catch (error) {
+    if (process.env.NODE_ENV !== "test") {
+      console.error("[api/upload/logo] upload failed", error);
+    }
     return NextResponse.json({ error: "上传失败" }, { status: 500 });
   }
 }

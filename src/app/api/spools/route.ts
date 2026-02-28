@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
-import { repairOrphanSpoolFilaments } from "@/lib/data-repair";
+import { ensureOrphanSpoolFilamentsRepaired } from "@/lib/data-repair";
 
 const SPOOL_SORT_FIELDS = [
   "brand",
@@ -15,6 +15,14 @@ const SPOOL_SORT_FIELDS = [
 ] as const;
 
 type SpoolSortField = (typeof SPOOL_SORT_FIELDS)[number];
+type SpoolStatus = "ACTIVE" | "EMPTY";
+const SPOOL_STATUS_SET = new Set<SpoolStatus>(["ACTIVE", "EMPTY"]);
+
+function logApiError(context: string, error: unknown) {
+  if (process.env.NODE_ENV !== "test") {
+    console.error(`[api/spools] ${context}`, error);
+  }
+}
 
 function parseSortField(value: string | null): SpoolSortField {
   if (!value) return "created_at";
@@ -25,6 +33,18 @@ function parseSortField(value: string | null): SpoolSortField {
 
 function parseSortOrder(value: string | null): Prisma.SortOrder {
   return value === "asc" ? "asc" : "desc";
+}
+
+function parseSpoolStatus(value: string | null): SpoolStatus | null | "invalid" {
+  if (!value) return null;
+  if (SPOOL_STATUS_SET.has(value as SpoolStatus)) {
+    return value as SpoolStatus;
+  }
+  return "invalid";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function getSpoolOrderBy(
@@ -54,10 +74,16 @@ function getSpoolOrderBy(
 export async function GET(request: NextRequest) {
   const authError = await requireAuth(request);
   if (authError) return authError;
-  await repairOrphanSpoolFilaments();
+  await ensureOrphanSpoolFilamentsRepaired().catch((error) => {
+    logApiError("orphan repair skipped after failure", error);
+    return 0;
+  });
 
   const { searchParams } = new URL(request.url);
-  const status = searchParams.get("status");
+  const status = parseSpoolStatus(searchParams.get("status"));
+  if (status === "invalid") {
+    return NextResponse.json({ error: "status 必须为 ACTIVE 或 EMPTY" }, { status: 400 });
+  }
   const sortBy = parseSortField(searchParams.get("sortBy"));
   const sortOrder = parseSortOrder(searchParams.get("sortOrder"));
 
@@ -88,21 +114,27 @@ export async function POST(request: NextRequest) {
   if (authError) return authError;
 
   try {
-    const { filament_id } = await request.json();
+    const body = await request.json();
+    if (!isRecord(body)) {
+      return NextResponse.json({ error: "请求格式错误" }, { status: 400 });
+    }
 
-    if (!filament_id) {
+    const filamentId =
+      typeof body.filament_id === "string" ? body.filament_id.trim() : "";
+
+    if (!filamentId) {
       return NextResponse.json({ error: "缺少 filament_id" }, { status: 400 });
     }
 
     const exists = await prisma.filament.findUnique({
-      where: { id: filament_id },
+      where: { id: filamentId },
     });
     if (!exists) {
       return NextResponse.json({ error: "耗材不存在" }, { status: 404 });
     }
 
     const spool = await prisma.spool.create({
-      data: { filament_id, status: "ACTIVE" },
+      data: { filament_id: filamentId, status: "ACTIVE" },
       include: {
         filament: true,
         location: true,
@@ -110,7 +142,8 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(spool, { status: 201 });
-  } catch {
+  } catch (error: unknown) {
+    logApiError("POST failed", error);
     return NextResponse.json({ error: "创建失败" }, { status: 500 });
   }
 }

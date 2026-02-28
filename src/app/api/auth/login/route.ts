@@ -5,6 +5,8 @@ import { generateToken, TOKEN_TTL } from "@/lib/auth";
 // --- Rate limiting (in-memory, per-process) ---
 const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const MAX_ATTEMPTS = 10;
+const MAX_BODY_SIZE_BYTES = 10 * 1024;
+const MAX_PASSWORD_LENGTH = 256;
 const attempts = new Map<string, { count: number; resetAt: number }>();
 
 function isRateLimited(ip: string): boolean {
@@ -47,13 +49,31 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { password } = await request.json();
-    const expected = process.env.APP_PASSWORD ?? "";
+    const contentLength = Number(request.headers.get("content-length") ?? 0);
+    if (Number.isFinite(contentLength) && contentLength > MAX_BODY_SIZE_BYTES) {
+      return NextResponse.json({ error: "请求体过大" }, { status: 413 });
+    }
+
+    const body = await request.json();
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "请求格式错误" }, { status: 400 });
+    }
+
+    const password = (body as { password?: unknown }).password;
+    if (typeof password !== "string" || password.length === 0 || password.length > MAX_PASSWORD_LENGTH) {
+      return NextResponse.json({ error: "密码错误" }, { status: 401 });
+    }
+
+    const expected = process.env.APP_PASSWORD;
+    if (!expected) {
+      if (process.env.NODE_ENV !== "test") {
+        console.error("[api/auth/login] APP_PASSWORD is not configured");
+      }
+      return NextResponse.json({ error: "服务端未完成配置" }, { status: 503 });
+    }
 
     if (
-      !password ||
-      !expected ||
-      !safeEqual(String(password), expected)
+      !safeEqual(password, expected)
     ) {
       return NextResponse.json({ error: "密码错误" }, { status: 401 });
     }
@@ -70,7 +90,10 @@ export async function POST(request: NextRequest) {
       { expiresAt },
       { headers: { "Set-Cookie": cookie } }
     );
-  } catch {
+  } catch (error) {
+    if (process.env.NODE_ENV !== "test") {
+      console.error("[api/auth/login] failed to parse request", error);
+    }
     return NextResponse.json({ error: "请求格式错误" }, { status: 400 });
   }
 }

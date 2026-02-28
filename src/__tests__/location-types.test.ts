@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { LOCATION_TYPES, getLocationType } from "@/lib/location-types";
+import { LOCATION_TYPES, getLocationType, isLocationType } from "@/lib/location-types";
 
 describe("LOCATION_TYPES", () => {
   it("包含 5 种类型", () => {
@@ -26,5 +26,18 @@ describe("getLocationType", () => {
   });
   it("空字符串回退到 custom", () => {
     expect(getLocationType("").value).toBe("custom");
+  });
+});
+
+describe("isLocationType", () => {
+  it("识别合法类型", () => {
+    expect(isLocationType("shelf")).toBe(true);
+    expect(isLocationType("ams_slot")).toBe(true);
+  });
+
+  it("拒绝非法类型和值类型", () => {
+    expect(isLocationType("anything")).toBe(false);
+    expect(isLocationType(1)).toBe(false);
+    expect(isLocationType(null)).toBe(false);
   });
 });

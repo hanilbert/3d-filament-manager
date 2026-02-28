@@ -6,7 +6,6 @@ import { FILAMENT_OPTIONAL_FIELDS } from "@/lib/types";
 import { findSharedBrandLogoUrl } from "@/lib/brand-logo";
 import { parseBodyUpcGtin, parseQueryUpcGtin } from "@/lib/upc-gtin";
 import {
-  aggregateMaterialTypeCounts,
   buildTextSearchCondition,
   parseExactSearchParam,
 } from "@/lib/filaments-query";
@@ -22,6 +21,7 @@ const FLAT_SORT_FIELDS = [
 
 type FlatSortField = (typeof FLAT_SORT_FIELDS)[number];
 type CatalogOptionalField = Exclude<(typeof FILAMENT_OPTIONAL_FIELDS)[number], "upc_gtin" | "material" | "variant">;
+const MAX_QUERY_LENGTH = 120;
 
 function parseFlatSortField(value: string | null): FlatSortField {
   if (!value) return "created_at";
@@ -226,7 +226,7 @@ export async function GET(request: NextRequest) {
   if (authError) return authError;
 
   const { searchParams } = new URL(request.url);
-  const q = searchParams.get("q") || "";
+  const q = (searchParams.get("q") || "").trim();
   const brand = searchParams.get("brand") || "";
   const material = searchParams.get("material") || "";
   const variant = searchParams.get("variant") || "";
@@ -239,6 +239,10 @@ export async function GET(request: NextRequest) {
   const materialFilter = buildTextSearchCondition(material, exact);
   const variantFilter = buildTextSearchCondition(variant, exact);
 
+  if (q.length > MAX_QUERY_LENGTH) {
+    return NextResponse.json({ error: "q 参数过长" }, { status: 400 });
+  }
+
   if (upcGtin.error) {
     return NextResponse.json({ error: upcGtin.error }, { status: 400 });
   }
@@ -248,15 +252,27 @@ export async function GET(request: NextRequest) {
   if (groupBy === "material") return handleGroupByMaterial();
 
   if (groupBy === "materialType") {
-    const items = await prisma.filament.findMany({ select: { variant: true } });
-    return NextResponse.json(aggregateMaterialTypeCounts(items));
+    const rows = await prisma.filament.groupBy({
+      by: ["variant"],
+      _count: { _all: true },
+    });
+
+    const materialTypes = rows
+      .map((row) => ({
+        materialType: row.variant.trim(),
+        count: row._count._all,
+      }))
+      .sort((a, b) => a.materialType.localeCompare(b.materialType));
+
+    return NextResponse.json(materialTypes);
   }
 
   if (groupBy === "variant") {
-    if (!material) {
+    const normalizedMaterial = material.trim();
+    if (!normalizedMaterial) {
       return NextResponse.json({ error: "material parameter required" }, { status: 400 });
     }
-    return handleGroupByVariant(material);
+    return handleGroupByVariant(normalizedMaterial);
   }
 
   const items = await prisma.filament.findMany({

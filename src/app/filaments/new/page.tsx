@@ -1,4 +1,6 @@
 import { CatalogForm } from "@/components/CatalogForm";
+import { PageHeader } from "@/components/layout/page-header";
+import { PageShell } from "@/components/layout/page-shell";
 import { isValidUpcGtin, normalizeUpcGtin } from "@/lib/upc-gtin";
 
 interface Props {
@@ -14,11 +16,9 @@ export default async function NewCatalogPage({ searchParams }: Props) {
     : "";
 
   return (
-    <div className="mx-auto max-w-lg md:max-w-2xl">
-      <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3">
-        <h1 className="text-lg font-semibold">新建耗材</h1>
-      </div>
+    <PageShell size="form">
+      <PageHeader title="新建耗材" />
       <CatalogForm initialValues={initialUpcGtin ? { upc_gtin: initialUpcGtin } : undefined} />
-    </div>
+    </PageShell>
   );
 }

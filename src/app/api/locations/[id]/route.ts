@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
+import { isLocationType } from "@/lib/location-types";
+
+function logApiError(context: string, error: unknown) {
+  if (process.env.NODE_ENV !== "test") {
+    console.error(`[api/locations/[id]] ${context}`, error);
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 export async function GET(
   request: NextRequest,
@@ -45,15 +56,33 @@ export async function PATCH(
   const { id } = await params;
   try {
     const body = await request.json();
-    const { name, type, is_default, printer_name, ams_unit, ams_slot } = body;
+    if (!isRecord(body)) {
+      return NextResponse.json({ error: "请求格式错误" }, { status: 400 });
+    }
 
-    if (name !== undefined && (!name || !name.trim())) {
+    const { name, type, is_default, printer_name, ams_unit, ams_slot } = body;
+    const normalizedName = typeof name === "string" ? name.trim() : undefined;
+    const normalizedType = typeof type === "string" ? type : undefined;
+    const normalizedPrinterName = typeof printer_name === "string" ? printer_name.trim() : undefined;
+    const normalizedAmsUnit = typeof ams_unit === "string" ? ams_unit.trim() : undefined;
+    const normalizedAmsSlot = typeof ams_slot === "string" ? ams_slot.trim() : undefined;
+
+    if (name !== undefined && !normalizedName) {
       return NextResponse.json({ error: "位置名称不能为空" }, { status: 400 });
+    }
+    if (normalizedName && normalizedName.length > 80) {
+      return NextResponse.json({ error: "位置名称不能超过 80 个字符" }, { status: 400 });
+    }
+    if (normalizedType !== undefined && !isLocationType(normalizedType)) {
+      return NextResponse.json({ error: "不支持的位置类型" }, { status: 400 });
+    }
+    if (is_default !== undefined && typeof is_default !== "boolean") {
+      return NextResponse.json({ error: "is_default 必须是布尔值" }, { status: 400 });
     }
 
     // AMS Slot 类型校验
-    if (type === "ams_slot") {
-      if (!printer_name || !ams_unit || !ams_slot) {
+    if (normalizedType === "ams_slot") {
+      if (!normalizedPrinterName || !normalizedAmsUnit || !normalizedAmsSlot) {
         return NextResponse.json(
           { error: "AMS 插槽类型需要填写打印机名称、AMS 单元和插槽号" },
           { status: 400 }
@@ -62,12 +91,12 @@ export async function PATCH(
     }
 
     const data: Record<string, unknown> = {};
-    if (name !== undefined) data.name = name.trim();
-    if (type !== undefined) data.type = type;
+    if (name !== undefined) data.name = normalizedName;
+    if (normalizedType !== undefined) data.type = normalizedType;
     if (is_default !== undefined) data.is_default = is_default;
-    if (printer_name !== undefined) data.printer_name = printer_name?.trim() || null;
-    if (ams_unit !== undefined) data.ams_unit = ams_unit?.trim() || null;
-    if (ams_slot !== undefined) data.ams_slot = ams_slot?.trim() || null;
+    if (printer_name !== undefined) data.printer_name = normalizedPrinterName || null;
+    if (ams_unit !== undefined) data.ams_unit = normalizedAmsUnit || null;
+    if (ams_slot !== undefined) data.ams_slot = normalizedAmsSlot || null;
 
     const location = await prisma.$transaction(async (tx) => {
       // 如果设为默认，先取消其他默认
@@ -85,7 +114,12 @@ export async function PATCH(
     });
 
     return NextResponse.json(location);
-  } catch {
+  } catch (error: unknown) {
+    const code = (error as { code?: string })?.code;
+    if (code === "P2025") {
+      return NextResponse.json({ error: "未找到" }, { status: 404 });
+    }
+    logApiError("PATCH failed", error);
     return NextResponse.json({ error: "更新失败" }, { status: 500 });
   }
 }

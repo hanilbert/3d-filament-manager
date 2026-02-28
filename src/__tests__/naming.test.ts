@@ -19,11 +19,11 @@ describe("global naming consistency", () => {
     }
   });
 
-  it("核心列表使用线轴数命名", () => {
+  it("核心列表使用正确数量命名", () => {
     const spoolsPage = readFileSync(resolve(process.cwd(), "src/app/spools/page.tsx"), "utf-8");
     const materialsPage = readFileSync(resolve(process.cwd(), "src/app/filaments/materials/page.tsx"), "utf-8");
 
     expect(spoolsPage).toContain("线轴数");
-    expect(materialsPage).toContain("线轴数");
+    expect(materialsPage).toContain("耗材数");
   });
 });

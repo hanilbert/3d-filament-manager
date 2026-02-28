@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export type SortOrder = "asc" | "desc";
 
@@ -24,10 +25,13 @@ export function SortHeader<T extends string>({
     <button
       type="button"
       onClick={() => onToggle(field)}
-      className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+      className={cn(
+        "inline-flex min-h-8 items-center gap-1.5 rounded-md px-1.5 text-muted-foreground transition-colors hover:text-foreground",
+        isActive ? "text-foreground" : ""
+      )}
     >
       <span>{label}</span>
-      <Icon className="w-3.5 h-3.5" />
+      <Icon className="size-3.5" />
     </button>
   );
 }

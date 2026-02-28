@@ -9,6 +9,8 @@ import { ColorSwatch } from "@/components/ColorSwatch";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { FilamentDetailSection } from "@/components/FilamentDetailSection";
 import { DetailSectionCard } from "@/components/DetailSectionCard";
+import { PageHeader } from "@/components/layout/page-header";
+import { PageShell } from "@/components/layout/page-shell";
 import { apiFetch } from "@/lib/fetch";
 import { formatDate } from "@/lib/utils";
 import { getFilamentDetailSections, hasVisibleItems } from "@/lib/filament-detail-sections";
@@ -83,19 +85,23 @@ export default function FilamentDetailPage() {
   const detailSections = getFilamentDetailSections(item).filter((s) => hasVisibleItems(s.items));
 
   return (
-    <div className="mx-auto max-w-lg md:max-w-6xl">
-      <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
-        <button onClick={() => router.back()} className="text-muted-foreground">
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-semibold truncate">{title}</h1>
-          <p className="text-xs text-muted-foreground">{item.material}</p>
-        </div>
-        <Link href={`/filaments/${id}/edit`} className="text-sm text-primary font-medium">编辑</Link>
-      </div>
+    <PageShell size="wide">
+      <PageHeader
+        title={title}
+        subtitle={item.material}
+        back={
+          <button onClick={() => router.back()} className="text-muted-foreground">
+            <ArrowLeft className="size-5" />
+          </button>
+        }
+        actions={
+          <Link href={`/filaments/${id}/edit`} className="text-sm font-medium text-primary">
+            编辑
+          </Link>
+        }
+      />
 
-      <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
+      <div className="app-content grid grid-cols-1 gap-4 md:grid-cols-2">
         <DetailSectionCard title={`线轴列表（${item.spools.length}）`} className="md:col-span-2">
           <div className="mb-3">
             <Button size="sm" onClick={handleAddSpool} disabled={adding}>
@@ -223,6 +229,6 @@ export default function FilamentDetailPage() {
         onConfirm={handleDeleteSpool}
         onCancel={() => setDeletingSpoolId(null)}
       />
-    </div>
+    </PageShell>
   );
 }

@@ -11,7 +11,7 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "线轴管家",
+  title: "耗材管家",
   description: "3D 打印耗材位置与生命周期管理",
 };
 

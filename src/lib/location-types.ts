@@ -7,9 +7,14 @@ export const LOCATION_TYPES = [
 ] as const;
 
 export type LocationType = (typeof LOCATION_TYPES)[number]["value"];
+const LOCATION_TYPE_SET = new Set<LocationType>(LOCATION_TYPES.map((item) => item.value));
 
 const CUSTOM_TYPE = LOCATION_TYPES.find((t) => t.value === "custom")!;
 
 export function getLocationType(type: string) {
   return LOCATION_TYPES.find((t) => t.value === type) ?? CUSTOM_TYPE;
+}
+
+export function isLocationType(value: unknown): value is LocationType {
+  return typeof value === "string" && LOCATION_TYPE_SET.has(value as LocationType);
 }

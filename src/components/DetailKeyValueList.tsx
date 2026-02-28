@@ -13,9 +13,12 @@ export function DetailKeyValueList({ items, className }: DetailKeyValueListProps
   return (
     <div className={cn(className)}>
       {visibleItems.map((item) => (
-        <div key={item.label} className="flex items-start justify-between border-b border-border py-2.5 last:border-0 last:pb-0">
+        <div
+          key={item.label}
+          className="flex items-start justify-between gap-4 border-b border-border/70 py-3 last:border-0 last:pb-0"
+        >
           <span className="text-sm text-muted-foreground">{item.label}</span>
-          <span className="text-sm font-medium text-right">{item.value}</span>
+          <span className="text-right text-sm font-medium leading-relaxed">{item.value}</span>
         </div>
       ))}
     </div>

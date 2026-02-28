@@ -34,12 +34,6 @@ async function getHmacKey(secret: string): Promise<CryptoKey> {
   );
 }
 
-async function hmacSign(data: string, secret: string): Promise<string> {
-  const key = await getHmacKey(secret);
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data));
-  return toBase64url(sig);
-}
-
 /** Constant-time HMAC verification using Web Crypto verify (Edge-safe) */
 async function hmacVerify(data: string, signature: string, secret: string): Promise<boolean> {
   const key = await getHmacKey(secret);
