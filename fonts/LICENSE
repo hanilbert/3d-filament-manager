@@ -1,9 +1,11 @@
 LXGW Neo XiHei Screen Full Font License
 ========================================
 
-Font: LXGW Neo XiHei Screen Full (LXGWNeoXiHeiScreenFull.ttf)
+Font: LXGW Neo XiHei Screen Full (霞鹜新晰黑)
+File: LXGWNeoXiHeiScreenFull.ttf
 License: IPA Font License 1.0
 Source: https://github.com/lxgw/LxgwNeoXiHei
+Based on: IPAex Gothic
 
 License Terms (Chinese):
 ------------------------
@@ -13,11 +15,14 @@ License Terms (Chinese):
 
 根据 IPA Font License 1.0 有关条款，在没有邮费、存储媒介费用和手续费的情况下，须免费提供字体文件，不得将字体文件单独售卖。
 
+对于涉及字体文件再分发的嵌入式应用（如应用程序、硬件设备、网页等），需满足 IPA 许可中针对衍生字体再分发的限制条件。
+
 License Terms (English Summary):
 ---------------------------------
 - You may use this font for printing, digital documents, video content, posters, packaging, publishing design, and other design purposes, including commercial and non-commercial use.
 - You may create derivative works based on this font, but derivative font names (including program names, file names, and font names) must not contain "IPA", and derivative fonts must inherit the same license (IPA Font License 1.0 is incompatible with SIL OFL 1.1).
 - According to IPA Font License 1.0, the font file must be provided free of charge without postage, storage media costs, or handling fees. The font file may not be sold separately.
+- For embedded applications involving font file redistribution (such as applications, hardware devices, web pages, etc.), the restrictions on derivative font redistribution in the IPA license must be met.
 
 Full License:
 -------------
