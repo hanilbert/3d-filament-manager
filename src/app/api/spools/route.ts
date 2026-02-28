@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
-import { ensureOrphanSpoolFilamentsRepaired } from "@/lib/data-repair";
+import { spoolCreateSchema } from "@/lib/api-schemas";
+import { readJsonWithLimit } from "@/lib/http";
 
+/**
+ * 线轴列表支持的排序字段
+ * 包括耗材关联字段（brand, material 等）和线轴自身字段
+ */
 const SPOOL_SORT_FIELDS = [
   "brand",
   "material",
@@ -17,13 +22,26 @@ const SPOOL_SORT_FIELDS = [
 type SpoolSortField = (typeof SPOOL_SORT_FIELDS)[number];
 type SpoolStatus = "ACTIVE" | "EMPTY";
 const SPOOL_STATUS_SET = new Set<SpoolStatus>(["ACTIVE", "EMPTY"]);
+/** 请求体大小限制：64KB */
+const MAX_JSON_BODY_BYTES = 64 * 1024;
 
-function logApiError(context: string, error: unknown) {
+/**
+ * 记录 API 错误日志
+ * 测试环境下不输出日志，避免干扰测试输出
+ * @param context - 错误上下文描述
+ * @param error - 错误对象
+ */
+function logSpoolApiError(context: string, error: unknown) {
   if (process.env.NODE_ENV !== "test") {
     console.error(`[api/spools] ${context}`, error);
   }
 }
 
+/**
+ * 解析排序字段参数
+ * @param value - URL 查询参数值
+ * @returns 有效的排序字段，无效时返回默认值 "created_at"
+ */
 function parseSortField(value: string | null): SpoolSortField {
   if (!value) return "created_at";
   return SPOOL_SORT_FIELDS.includes(value as SpoolSortField)
@@ -31,10 +49,20 @@ function parseSortField(value: string | null): SpoolSortField {
     : "created_at";
 }
 
+/**
+ * 解析排序方向参数
+ * @param value - URL 查询参数值
+ * @returns "asc" 或 "desc"，默认为 "desc"
+ */
 function parseSortOrder(value: string | null): Prisma.SortOrder {
   return value === "asc" ? "asc" : "desc";
 }
 
+/**
+ * 解析线轴状态参数
+ * @param value - URL 查询参数值
+ * @returns 有效状态、null（不筛选）或 "invalid"（无效值）
+ */
 function parseSpoolStatus(value: string | null): SpoolStatus | null | "invalid" {
   if (!value) return null;
   if (SPOOL_STATUS_SET.has(value as SpoolStatus)) {
@@ -43,10 +71,13 @@ function parseSpoolStatus(value: string | null): SpoolStatus | null | "invalid" 
   return "invalid";
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
+/**
+ * 根据排序字段构建 Prisma orderBy 对象
+ * 处理关联字段（brand, material 等）和直接字段的不同查询语法
+ * @param field - 排序字段
+ * @param order - 排序方向
+ * @returns Prisma orderBy 配置对象
+ */
 function getSpoolOrderBy(
   field: SpoolSortField,
   order: Prisma.SortOrder
@@ -71,13 +102,23 @@ function getSpoolOrderBy(
   }
 }
 
+/**
+ * GET /api/spools
+ * 获取线轴列表
+ *
+ * 查询参数：
+ * - status: 筛选状态（ACTIVE | EMPTY），可选
+ * - sortBy: 排序字段，默认 created_at
+ * - sortOrder: 排序方向（asc | desc），默认 desc
+ *
+ * 返回：
+ * - 200: 线轴列表（包含关联的耗材和位置信息）
+ * - 400: 无效的 status 参数
+ * - 401: 未认证
+ */
 export async function GET(request: NextRequest) {
   const authError = await requireAuth(request);
   if (authError) return authError;
-  await ensureOrphanSpoolFilamentsRepaired().catch((error) => {
-    logApiError("orphan repair skipped after failure", error);
-    return 0;
-  });
 
   const { searchParams } = new URL(request.url);
   const status = parseSpoolStatus(searchParams.get("status"));
@@ -109,18 +150,47 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(spools);
 }
 
+/**
+ * POST /api/spools
+ * 创建新线轴
+ *
+ * 请求体：
+ * - filament_id: 耗材 ID（必填）
+ *
+ * 业务逻辑：
+ * - 验证耗材是否存在
+ * - 状态默认为 ACTIVE
+ * - 位置默认为 null
+ *
+ * 返回：
+ * - 201: 创建成功，返回线轴详情
+ * - 400: 请求格式错误或缺少 filament_id
+ * - 401: 未认证
+ * - 404: 耗材不存在
+ * - 413: 请求体过大
+ * - 500: 创建失败
+ */
 export async function POST(request: NextRequest) {
   const authError = await requireAuth(request);
   if (authError) return authError;
 
   try {
-    const body = await request.json();
-    if (!isRecord(body)) {
+    const bodyResult = await readJsonWithLimit<unknown>(request, {
+      maxBytes: MAX_JSON_BODY_BYTES,
+    });
+    if (!bodyResult.ok) {
+      return NextResponse.json(
+        { error: bodyResult.error },
+        { status: bodyResult.status }
+      );
+    }
+
+    const parsed = spoolCreateSchema.safeParse(bodyResult.data);
+    if (!parsed.success) {
       return NextResponse.json({ error: "请求格式错误" }, { status: 400 });
     }
 
-    const filamentId =
-      typeof body.filament_id === "string" ? body.filament_id.trim() : "";
+    const filamentId = parsed.data.filament_id.trim();
 
     if (!filamentId) {
       return NextResponse.json({ error: "缺少 filament_id" }, { status: 400 });
@@ -143,7 +213,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(spool, { status: 201 });
   } catch (error: unknown) {
-    logApiError("POST failed", error);
+    logSpoolApiError("POST failed", error);
     return NextResponse.json({ error: "创建失败" }, { status: 500 });
   }
 }
