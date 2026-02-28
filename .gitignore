@@ -34,12 +34,15 @@ yarn-error.log*
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
 
 # data directory (SQLite db and logos)
 /data/
 /prisma/data/
 /prisma/dev.db
 /prisma/*.db
+/prisma/*.db-journal
 
 # vercel
 .vercel

@@ -1,0 +1,64 @@
+version: '3.8'
+
+# 生产环境 Docker Compose 配置
+# 使用方法：docker-compose -f docker-compose.prod.yml up -d
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: spool-tracker:latest
+    container_name: spool-tracker-prod
+    # 仅本地访问，通过反向代理（如 Nginx）对外提供服务
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      # 持久化数据目录
+      - ./data:/app/data:rw
+    env_file:
+      - .env.production
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/login || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    # 安全配置
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    # 只读根文件系统
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=64M
+      - /app/.next/cache:noexec,nosuid,size=128M
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # 网络配置
+    networks:
+      - filament_network
+
+networks:
+  filament_network:
+    driver: bridge
