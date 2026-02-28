@@ -2,12 +2,11 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 
-# Install dependencies for native modules (if needed)
+# Install dependencies for native modules
 RUN apk add --no-cache libc6-compat
 
 COPY package.json package-lock.json* ./
-RUN npm ci --ignore-scripts --only=production && \
-    npm cache clean --force
+RUN npm ci --ignore-scripts
 
 # Stage 2: Build
 FROM node:20-alpine AS builder
@@ -32,9 +31,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 # Install runtime dependencies
-RUN apk add --no-cache \
-    libc6-compat \
-    tini
+RUN apk add --no-cache libc6-compat
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -64,13 +61,6 @@ USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3000/login', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
-
-# Use tini as init system to handle signals properly
-ENTRYPOINT ["/sbin/tini", "--"]
 
 # Run migrations then start the server
 CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node server.js"]
