@@ -56,5 +56,9 @@ memory/
 .full-review/
 .git-workflow/
 conductor/
+ARCHITECTURE_REVIEW.md
+DOCUMENTATION_REVIEW.md
+PERFORMANCE_ANALYSIS.md
+SECURITY_AUDIT.md
 
 /src/generated/prisma
