@@ -136,3 +136,13 @@ npx prisma studio
 ## License
 
 MIT
+
+### Third-Party Licenses
+
+This project includes the following third-party assets:
+
+- **Font**: LXGW Neo XiHei Screen Full
+  - License: IPA Font License 1.0
+  - Location: `/fonts/LXGWNeoXiHeiScreenFull.ttf`
+  - Full license text: `/fonts/LICENSE`
+  - Source: https://github.com/lxgw/LxgwNeoXiHei
