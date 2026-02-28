@@ -53,5 +53,8 @@ _drafts/
 .drafts/
 .claude/
 memory/
+.full-review/
+.git-workflow/
+conductor/
 
 /src/generated/prisma
