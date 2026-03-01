@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { LibraryBig, FlaskConical, MapPin, ArrowRight, Package2 } from "lucide-react";
 import { unstable_cache } from "next/cache";
