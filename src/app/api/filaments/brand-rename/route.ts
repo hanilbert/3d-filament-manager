@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
 import { brandRenameBodySchema } from "@/lib/api-schemas";
+import { invalidateBrandLogoCache } from "@/lib/brand-logo";
 import { readJsonWithLimit } from "@/lib/http";
 
 const MAX_JSON_BODY_BYTES = 64 * 1024;
@@ -49,6 +50,9 @@ export async function PATCH(request: NextRequest) {
       where: { brand: oldBrand },
       data: { brand: newBrand },
     });
+
+    invalidateBrandLogoCache(oldBrand);
+    invalidateBrandLogoCache(newBrand);
 
     return NextResponse.json({ updated: result.count });
   } catch (error) {

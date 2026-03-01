@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FlaskConical, Home, LibraryBig, MapPin, ScanLine } from "lucide-react";
+import { FlaskConical, Home, LibraryBig, MapPin, Palette, ScanLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlobalScanDialog } from "@/components/GlobalScanDialog";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
@@ -110,6 +110,12 @@ export function SideNav() {
               pathname.startsWith("/filaments/material/")
             }
             icon={<FlaskConical className="size-4" />}
+          />
+          <NavItem
+            href="/colors"
+            label="颜色"
+            active={pathname === "/colors"}
+            icon={<Palette className="size-4" />}
           />
         </div>
       </div>

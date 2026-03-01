@@ -164,6 +164,8 @@ export class FixedWindowRateLimiter {
       };
     }
 
+    // LRU：先删再插，确保活跃 key 移到 Map 尾部
+    if (this.entries.has(normalizedKey)) this.entries.delete(normalizedKey);
     this.entries.set(normalizedKey, entry);
     this.enforceMaxKeys();
 
@@ -202,22 +204,12 @@ export class FixedWindowRateLimiter {
 
   /**
    * 强制执行最大条目数限制
-   * 当存储的条目数超过 maxKeys 时，删除最久未使用的条目（LRU 策略）
+   * 利用 Map 插入顺序实现 O(1) LRU 淘汰：首部即为最久未使用的条目
    */
   private enforceMaxKeys(): void {
-    if (this.entries.size <= this.options.maxKeys) return;
-
-    let oldestKey: string | null = null;
-    let oldestSeen = Number.POSITIVE_INFINITY;
-
-    for (const [key, entry] of this.entries) {
-      if (entry.lastSeenAt < oldestSeen) {
-        oldestSeen = entry.lastSeenAt;
-        oldestKey = key;
-      }
-    }
-
-    if (oldestKey) {
+    while (this.entries.size > this.options.maxKeys) {
+      const oldestKey = this.entries.keys().next().value as string | undefined;
+      if (!oldestKey) break;
       this.entries.delete(oldestKey);
     }
   }

@@ -185,7 +185,7 @@ export default function SpoolDetailPage() {
             <div className="flex items-center gap-4">
               {filament.logo_url ? (
                 <div className="relative h-16 w-16 flex-shrink-0">
-                  <Image src={filament.logo_url} alt={filament.brand} fill className="rounded-lg object-contain" unoptimized />
+                  <Image src={filament.logo_url} alt={filament.brand} fill className="rounded-lg object-contain" sizes="64px" />
                 </div>
               ) : (
                 <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-muted text-2xl font-bold text-muted-foreground">

@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
 import { FILAMENT_ALLOWED_FIELDS } from "@/lib/types";
-import { findSharedBrandLogoUrl } from "@/lib/brand-logo";
+import { findSharedBrandLogoUrl, invalidateBrandLogoCache } from "@/lib/brand-logo";
 import { parseBodyUpcGtin } from "@/lib/upc-gtin";
 import { filamentPatchSchema } from "@/lib/api-schemas";
 import { readJsonWithLimit } from "@/lib/http";
@@ -97,22 +97,29 @@ export async function PATCH(
       if (sharedLogoUrl) data.logo_url = sharedLogoUrl;
     }
 
-    const item = await prisma.filament.update({
-      where: { id },
-      data,
+    const item = await prisma.$transaction(async (tx) => {
+      const updated = await tx.filament.update({
+        where: { id },
+        data,
+      });
+
+      if (hasLogoInPayload) {
+        await tx.filament.updateMany({
+          where: { brand: updated.brand, id: { not: updated.id } },
+          data: { logo_url: updated.logo_url },
+        });
+      } else if (updated.logo_url) {
+        await tx.filament.updateMany({
+          where: { brand: updated.brand, logo_url: null, id: { not: updated.id } },
+          data: { logo_url: updated.logo_url },
+        });
+      }
+
+      return updated;
     });
 
-    if (hasLogoInPayload) {
-      await prisma.filament.updateMany({
-        where: { brand: item.brand },
-        data: { logo_url: item.logo_url },
-      });
-    } else if (item.logo_url) {
-      await prisma.filament.updateMany({
-        where: { brand: item.brand, logo_url: null },
-        data: { logo_url: item.logo_url },
-      });
-    }
+    invalidateBrandLogoCache(current.brand);
+    if (item.brand !== current.brand) invalidateBrandLogoCache(item.brand);
 
     return NextResponse.json(item);
   } catch (e: unknown) {

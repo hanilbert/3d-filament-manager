@@ -66,18 +66,24 @@ function getFlatListOrderBy(
 
 async function handleGroupByBrandList(): Promise<NextResponse> {
   const rows = await prisma.$queryRaw<Array<{ brand: string; logo_url: string | null }>>`
+    WITH latest_logo AS (
+      SELECT brand, logo_url
+      FROM (
+        SELECT
+          f.brand,
+          f.logo_url,
+          ROW_NUMBER() OVER (PARTITION BY f.brand ORDER BY f.updated_at DESC) AS rn
+        FROM "Filament" f
+        WHERE f.logo_url IS NOT NULL
+      ) ranked
+      WHERE rn = 1
+    )
     SELECT
       f.brand AS brand,
-      (
-        SELECT f2.logo_url
-        FROM "Filament" f2
-        WHERE f2.brand = f.brand
-          AND f2.logo_url IS NOT NULL
-        ORDER BY f2.updated_at DESC
-        LIMIT 1
-      ) AS logo_url
+      ll.logo_url AS logo_url
     FROM "Filament" f
-    GROUP BY f.brand
+    LEFT JOIN latest_logo ll ON ll.brand = f.brand
+    GROUP BY f.brand, ll.logo_url
     ORDER BY f.brand ASC
   `;
 
@@ -98,27 +104,34 @@ async function handleGroupByBrand(): Promise<NextResponse> {
     variants_csv: string | null;
     spool_count: number | bigint | null;
   }>>`
+    WITH spool_counts AS (
+      SELECT s.filament_id, COUNT(*) AS spool_count
+      FROM "Spool" s
+      GROUP BY s.filament_id
+    ),
+    latest_logo AS (
+      SELECT brand, logo_url
+      FROM (
+        SELECT
+          f.brand,
+          f.logo_url,
+          ROW_NUMBER() OVER (PARTITION BY f.brand ORDER BY f.updated_at DESC) AS rn
+        FROM "Filament" f
+        WHERE f.logo_url IS NOT NULL
+      ) ranked
+      WHERE rn = 1
+    )
     SELECT
       f.brand AS brand,
       COUNT(*) AS count,
       GROUP_CONCAT(DISTINCT f.material) AS materials_csv,
       GROUP_CONCAT(DISTINCT NULLIF(TRIM(f.variant), '')) AS variants_csv,
       COALESCE(SUM(sc.spool_count), 0) AS spool_count,
-      (
-        SELECT f2.logo_url
-        FROM "Filament" f2
-        WHERE f2.brand = f.brand
-          AND f2.logo_url IS NOT NULL
-        ORDER BY f2.updated_at DESC
-        LIMIT 1
-      ) AS logo_url
+      ll.logo_url AS logo_url
     FROM "Filament" f
-    LEFT JOIN (
-      SELECT s.filament_id AS filament_id, COUNT(*) AS spool_count
-      FROM "Spool" s
-      GROUP BY s.filament_id
-    ) sc ON sc.filament_id = f.id
-    GROUP BY f.brand
+    LEFT JOIN spool_counts sc ON sc.filament_id = f.id
+    LEFT JOIN latest_logo ll ON ll.brand = f.brand
+    GROUP BY f.brand, ll.logo_url
     ORDER BY count DESC, f.brand ASC
   `;
 
@@ -276,7 +289,15 @@ export async function queryFilaments(searchParams: URLSearchParams): Promise<Nex
         upcGtin.provided ? { upc_gtin: upcGtin.normalized } : {},
       ],
     },
-    include: {
+    select: {
+      id: true,
+      brand: true,
+      material: true,
+      variant: true,
+      color_name: true,
+      color_hex: true,
+      logo_url: true,
+      created_at: true,
       _count: { select: { spools: true } },
     },
     orderBy: getFlatListOrderBy(sortBy, sortOrder),

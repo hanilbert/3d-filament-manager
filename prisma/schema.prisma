@@ -71,6 +71,8 @@ model Filament {
   spools Spool[]
 
   @@unique([brand, material, variant, color_name])
+  @@index([brand])
+  @@index([brand, updated_at])
 }
 
 model Location {

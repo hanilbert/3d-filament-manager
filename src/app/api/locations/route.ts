@@ -6,11 +6,20 @@ import { locationCreateSchema } from "@/lib/api-schemas";
 import { readJsonWithLimit } from "@/lib/http";
 
 const MAX_JSON_BODY_BYTES = 64 * 1024;
+const DEFAULT_SPOOL_LIMIT = 8;
+const MAX_SPOOL_LIMIT = 50;
 
 function logApiError(context: string, error: unknown) {
   if (process.env.NODE_ENV !== "test") {
     console.error(`[api/locations] ${context}`, error);
   }
+}
+
+function parseBoundedInt(value: string | null, fallback: number, min: number, max: number): number {
+  if (!value) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(min, Math.min(max, parsed));
 }
 
 export async function GET(request: NextRequest) {
@@ -31,6 +40,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(locations);
     }
 
+    const spoolLimit = parseBoundedInt(
+      searchParams.get("spoolLimit"), DEFAULT_SPOOL_LIMIT, 1, MAX_SPOOL_LIMIT
+    );
+
     const locations = await prisma.location.findMany({
       include: {
         _count: {
@@ -50,6 +63,7 @@ export async function GET(request: NextRequest) {
             },
           },
           orderBy: { created_at: "desc" },
+          take: spoolLimit,
         },
       },
       orderBy: { name: "asc" },

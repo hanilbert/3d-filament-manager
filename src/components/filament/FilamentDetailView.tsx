@@ -283,7 +283,7 @@ export function FilamentDetailView({
                     alt={item.brand}
                     fill
                     className="rounded-lg object-contain"
-                    unoptimized
+                    sizes="64px"
                   />
                 </div>
               ) : (

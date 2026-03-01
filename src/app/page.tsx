@@ -1,23 +1,29 @@
 import Link from "next/link";
 import { LibraryBig, FlaskConical, MapPin, ArrowRight, Package2 } from "lucide-react";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
 import { formatNumber } from "@/lib/utils";
 
-async function getStats() {
+const getStats = unstable_cache(async () => {
   const [
-    filamentCount,
-    spoolActiveCount,
-    spoolEmptyCount,
-    locationCount,
+    overviewRows,
     distinctCounts,
     topBrandRows,
     topMaterialRows,
   ] =
     await Promise.all([
-      prisma.filament.count(),
-      prisma.spool.count({ where: { status: "ACTIVE" } }),
-      prisma.spool.count({ where: { status: "EMPTY" } }),
-      prisma.location.count(),
+      prisma.$queryRaw<Array<{
+        filament_count: number | bigint;
+        spool_active_count: number | bigint;
+        spool_empty_count: number | bigint;
+        location_count: number | bigint;
+      }>>`
+        SELECT
+          (SELECT COUNT(*) FROM "Filament") AS filament_count,
+          (SELECT COUNT(*) FROM "Spool" WHERE status = 'ACTIVE') AS spool_active_count,
+          (SELECT COUNT(*) FROM "Spool" WHERE status = 'EMPTY') AS spool_empty_count,
+          (SELECT COUNT(*) FROM "Location") AS location_count
+      `,
       prisma.$queryRaw<Array<{ brand_count: number | bigint; material_count: number | bigint }>>`
         SELECT
           COUNT(DISTINCT f.brand) AS brand_count,
@@ -45,6 +51,7 @@ async function getStats() {
       `,
     ]);
 
+  const overview = overviewRows[0];
   const countRow = distinctCounts[0];
   const topBrandRow = topBrandRows[0];
   const topMaterialRow = topMaterialRows[0];
@@ -52,12 +59,12 @@ async function getStats() {
   const materialCount = countRow ? Number(countRow.material_count) : 0;
 
   return {
-    filamentCount,
+    filamentCount: overview ? Number(overview.filament_count) : 0,
     brandCount,
     materialCount,
-    spoolActiveCount,
-    spoolEmptyCount,
-    locationCount,
+    spoolActiveCount: overview ? Number(overview.spool_active_count) : 0,
+    spoolEmptyCount: overview ? Number(overview.spool_empty_count) : 0,
+    locationCount: overview ? Number(overview.location_count) : 0,
     topBrand: topBrandRow
       ? { name: topBrandRow.brand, spools: Number(topBrandRow.spool_count) }
       : null,
@@ -65,7 +72,7 @@ async function getStats() {
       ? { name: topMaterialRow.material, count: Number(topMaterialRow.count) }
       : null,
   };
-}
+}, ["home-stats"], { revalidate: 30 });
 
 const features = [
   {

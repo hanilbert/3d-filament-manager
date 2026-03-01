@@ -44,23 +44,26 @@ export default function BulkAmsPage() {
     setProgress(0);
 
     try {
-      let done = 0;
+      const tasks: Array<Promise<void>> = [];
       for (let i = 0; i < selectedSlots.length; i++) {
         if (!selectedSlots[i]) continue;
-        await apiFetch("/api/locations", {
-          method: "POST",
-          body: JSON.stringify({
-            name: printerName.trim(),
-            type: "ams_slot",
-            is_default: false,
-            printer_name: printerName.trim(),
-            ams_unit: amsUnit.trim(),
-            ams_slot: String(i + 1),
-          }),
-        });
-        done++;
-        setProgress(done);
+        tasks.push(
+          apiFetch("/api/locations", {
+            method: "POST",
+            body: JSON.stringify({
+              name: printerName.trim(),
+              type: "ams_slot",
+              is_default: false,
+              printer_name: printerName.trim(),
+              ams_unit: amsUnit.trim(),
+              ams_slot: String(i + 1),
+            }),
+          }).then(() => {
+            setProgress((prev) => prev + 1);
+          })
+        );
       }
+      await Promise.all(tasks);
       router.push("/locations");
     } catch (err) {
       setError(err instanceof Error ? err.message : "创建失败");

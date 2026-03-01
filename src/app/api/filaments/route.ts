@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
 import { FILAMENT_OPTIONAL_FIELDS } from "@/lib/types";
-import { findSharedBrandLogoUrl } from "@/lib/brand-logo";
+import { findSharedBrandLogoUrl, invalidateBrandLogoCache } from "@/lib/brand-logo";
 import { parseBodyUpcGtin } from "@/lib/upc-gtin";
 import { filamentCreateSchema } from "@/lib/api-schemas";
 import { readJsonWithLimit } from "@/lib/http";
@@ -125,13 +125,19 @@ export async function POST(request: NextRequest) {
       if (sharedLogoUrl) data.logo_url = sharedLogoUrl;
     }
 
-    const item = await prisma.filament.create({ data });
+    const item = await prisma.$transaction(async (tx) => {
+      const created = await tx.filament.create({ data });
+      if (created.logo_url) {
+        await tx.filament.updateMany({
+          where: { brand: created.brand, id: { not: created.id } },
+          data: { logo_url: created.logo_url },
+        });
+      }
+      return created;
+    });
 
     if (item.logo_url) {
-      await prisma.filament.updateMany({
-        where: { brand: item.brand },
-        data: { logo_url: item.logo_url },
-      });
+      invalidateBrandLogoCache(item.brand);
     }
 
     return NextResponse.json(item, { status: 201 });

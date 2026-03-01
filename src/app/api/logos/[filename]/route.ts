@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFile } from "fs/promises";
+import { readFile, stat } from "fs/promises";
 import { join, basename } from "path";
 
 const MIME_MAP: Record<string, string> = {
@@ -11,7 +11,7 @@ const MIME_MAP: Record<string, string> = {
 const LOGO_FILE_RE = /^[0-9a-f-]{36}\.(jpg|jpeg|png|webp)$/i;
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ filename: string }> }
 ) {
   const { filename } = await params;
@@ -29,16 +29,30 @@ export async function GET(
 
   try {
     const filePath = join(process.cwd(), "data", "logos", safe);
-    const buffer = await readFile(filePath);
+    const fileStat = await stat(filePath);
+    const etag = `W/"${fileStat.size.toString(16)}-${Math.trunc(fileStat.mtimeMs).toString(16)}"`;
+    const lastModified = fileStat.mtime.toUTCString();
 
     const headers: Record<string, string> = {
       "Content-Type": contentType,
       "Cache-Control": "public, max-age=31536000, immutable",
       "X-Content-Type-Options": "nosniff",
+      ETag: etag,
+      "Last-Modified": lastModified,
     };
 
+    // 304 缓存协商：匹配 ETag 时跳过磁盘读取
+    if (request.headers.get("if-none-match") === etag) {
+      return new NextResponse(null, { status: 304, headers });
+    }
+
+    const buffer = await readFile(filePath);
     return new NextResponse(buffer, { headers });
   } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") {
+      return NextResponse.json({ error: "文件不存在" }, { status: 404 });
+    }
     if (process.env.NODE_ENV !== "test") {
       console.error("[api/logos/[filename]] read failed", error);
     }
