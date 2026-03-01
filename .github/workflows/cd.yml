@@ -1,0 +1,59 @@
+name: CD - 持续部署
+
+# 触发条件：发布 Release 时自动构建并推送 Docker 镜像
+on:
+  release:
+    types: [published]
+
+# 并发控制：同一 Release 只运行一次构建
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false  # 不取消正在运行的构建
+
+jobs:
+  docker:
+    name: 构建并推送 Docker 镜像
+    runs-on: ubuntu-latest
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 配置 QEMU（多平台构建支持）
+        uses: docker/setup-qemu-action@v3
+
+      - name: 配置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 登录 Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: 提取镜像元数据（标签、注释）
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: hanilbert/3d-filament-manager
+          # 自动生成标签：
+          # - v1.0.0 -> 1.0.0, 1.0, 1, latest
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: 构建并推送 Docker 镜像
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64  # 多平台支持
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # 启用 Docker Layer 缓存（使用 GitHub Actions Cache）
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # 构建参数
+          build-args: |
+            DATABASE_URL=file:/app/data/spool_tracker.db
