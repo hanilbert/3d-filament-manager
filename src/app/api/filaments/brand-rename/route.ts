@@ -4,14 +4,9 @@ import { requireAuth } from "@/lib/api-auth";
 import { brandRenameBodySchema } from "@/lib/api-schemas";
 import { invalidateBrandLogoCache } from "@/lib/brand-logo";
 import { readJsonWithLimit } from "@/lib/http";
+import { logger } from "@/lib/logger";
 
 const MAX_JSON_BODY_BYTES = 64 * 1024;
-
-function logApiError(context: string, error: unknown) {
-  if (process.env.NODE_ENV !== "test") {
-    console.error(`[api/filaments/brand-rename] ${context}`, error);
-  }
-}
 
 export async function PATCH(request: NextRequest) {
   const authError = await requireAuth(request);
@@ -56,7 +51,7 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({ updated: result.count });
   } catch (error) {
-    logApiError("PATCH failed", error);
+    logger.error("api/filaments/brand-rename", "PATCH failed", { error });
     return NextResponse.json({ error: "重命名失败" }, { status: 500 });
   }
 }

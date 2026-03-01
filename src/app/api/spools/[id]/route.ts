@@ -5,14 +5,9 @@ import { findSharedBrandLogoUrl } from "@/lib/brand-logo";
 import { withFallbackFilamentLogo } from "@/lib/spool-detail";
 import { spoolPatchSchema } from "@/lib/api-schemas";
 import { readJsonWithLimit } from "@/lib/http";
+import { logger } from "@/lib/logger";
 
 const MAX_JSON_BODY_BYTES = 64 * 1024;
-
-function logApiError(context: string, error: unknown) {
-  if (process.env.NODE_ENV !== "test") {
-    console.error(`[api/spools/[id]] ${context}`, error);
-  }
-}
 
 export async function GET(
   request: NextRequest,
@@ -108,7 +103,7 @@ export async function PATCH(
     if (code === "P2003") {
       return NextResponse.json({ error: "location_id 无效" }, { status: 400 });
     }
-    logApiError("PATCH failed", error);
+    logger.error("api/spools/[id]", "PATCH failed", { error });
     return NextResponse.json({ error: "更新失败" }, { status: 500 });
   }
 }
@@ -129,7 +124,7 @@ export async function DELETE(
     if (code === "P2025") {
       return NextResponse.json({ error: "未找到" }, { status: 404 });
     }
-    logApiError("DELETE failed", error);
+    logger.error("api/spools/[id]", "DELETE failed", { error });
     return NextResponse.json({ error: "删除失败" }, { status: 500 });
   }
 }

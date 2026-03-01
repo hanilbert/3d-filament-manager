@@ -4,6 +4,7 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { v4 as uuidv4 } from "uuid";
 import { detectImageExtension } from "@/lib/image-signature";
+import { logger } from "@/lib/logger";
 
 // SVG removed — stored XSS risk (S-C3)
 const ALLOWED_TYPES: Record<string, string> = {
@@ -57,9 +58,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: `/api/logos/${filename}` }, { status: 201 });
   } catch (error) {
-    if (process.env.NODE_ENV !== "test") {
-      console.error("[api/upload/logo] upload failed", error);
-    }
+    logger.error("api/upload/logo", "upload failed", { error });
     return NextResponse.json({ error: "上传失败" }, { status: 500 });
   }
 }

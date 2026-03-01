@@ -4,16 +4,11 @@ import { requireAuth } from "@/lib/api-auth";
 import { isLocationType } from "@/lib/location-types";
 import { locationCreateSchema } from "@/lib/api-schemas";
 import { readJsonWithLimit } from "@/lib/http";
+import { logger } from "@/lib/logger";
 
 const MAX_JSON_BODY_BYTES = 64 * 1024;
 const DEFAULT_SPOOL_LIMIT = 8;
 const MAX_SPOOL_LIMIT = 50;
-
-function logApiError(context: string, error: unknown) {
-  if (process.env.NODE_ENV !== "test") {
-    console.error(`[api/locations] ${context}`, error);
-  }
-}
 
 function parseBoundedInt(value: string | null, fallback: number, min: number, max: number): number {
   if (!value) return fallback;
@@ -71,7 +66,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(locations);
   } catch (error) {
-    logApiError("GET failed", error);
+    logger.error("api/locations", "GET failed", { error });
     return NextResponse.json({ error: "获取位置列表失败" }, { status: 500 });
   }
 }
@@ -150,7 +145,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(location, { status: 201 });
   } catch (error) {
-    logApiError("POST failed", error);
+    logger.error("api/locations", "POST failed", { error });
     return NextResponse.json({ error: "创建失败" }, { status: 500 });
   }
 }

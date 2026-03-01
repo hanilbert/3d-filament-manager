@@ -4,6 +4,7 @@ import { generateToken, TOKEN_TTL } from "@/lib/auth";
 import { loginBodySchema } from "@/lib/api-schemas";
 import { readJsonWithLimit } from "@/lib/http";
 import { FixedWindowRateLimiter, normalizeClientIp } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 // --- Rate limiting (in-memory, per-process) ---
 const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
@@ -41,9 +42,7 @@ export async function POST(request: NextRequest) {
 
   const expected = process.env.APP_PASSWORD;
   if (!expected) {
-    if (process.env.NODE_ENV !== "test") {
-      console.error("[api/auth/login] APP_PASSWORD is not configured");
-    }
+    logger.error("api/auth/login", "APP_PASSWORD is not configured");
     return NextResponse.json({ error: "服务端未完成配置" }, { status: 503 });
   }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readFile, stat } from "fs/promises";
 import { join, basename } from "path";
+import { logger } from "@/lib/logger";
 
 const MIME_MAP: Record<string, string> = {
   jpg: "image/jpeg",
@@ -53,9 +54,7 @@ export async function GET(
     if (code === "ENOENT") {
       return NextResponse.json({ error: "文件不存在" }, { status: 404 });
     }
-    if (process.env.NODE_ENV !== "test") {
-      console.error("[api/logos/[filename]] read failed", error);
-    }
+    logger.error("api/logos/[filename]", "read failed", { error });
     return NextResponse.json({ error: "文件不存在" }, { status: 404 });
   }
 }

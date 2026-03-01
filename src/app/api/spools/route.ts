@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
 import { spoolCreateSchema } from "@/lib/api-schemas";
 import { readJsonWithLimit } from "@/lib/http";
+import { logger } from "@/lib/logger";
 
 /**
  * 线轴列表支持的排序字段
@@ -24,18 +25,6 @@ type SpoolStatus = "ACTIVE" | "EMPTY";
 const SPOOL_STATUS_SET = new Set<SpoolStatus>(["ACTIVE", "EMPTY"]);
 /** 请求体大小限制：64KB */
 const MAX_JSON_BODY_BYTES = 64 * 1024;
-
-/**
- * 记录 API 错误日志
- * 测试环境下不输出日志，避免干扰测试输出
- * @param context - 错误上下文描述
- * @param error - 错误对象
- */
-function logSpoolApiError(context: string, error: unknown) {
-  if (process.env.NODE_ENV !== "test") {
-    console.error(`[api/spools] ${context}`, error);
-  }
-}
 
 /**
  * 解析排序字段参数
@@ -213,7 +202,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(spool, { status: 201 });
   } catch (error: unknown) {
-    logSpoolApiError("POST failed", error);
+    logger.error("api/spools", "POST failed", { error });
     return NextResponse.json({ error: "创建失败" }, { status: 500 });
   }
 }
