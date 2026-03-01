@@ -51,17 +51,4 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local drafts and claude workspace
-_drafts/
-.drafts/
-.claude/
-memory/
-.full-review/
-.git-workflow/
-conductor/
-ARCHITECTURE_REVIEW.md
-DOCUMENTATION_REVIEW.md
-PERFORMANCE_ANALYSIS.md
-SECURITY_AUDIT.md
-
 /src/generated/prisma

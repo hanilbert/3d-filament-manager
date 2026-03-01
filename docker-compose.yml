@@ -1,16 +1,18 @@
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        DATABASE_URL: ${DATABASE_URL:-file:/app/data/spool_tracker.db}
-    image: spool-tracker:latest
-    container_name: spool-tracker
+    build: .
+    image: 3d-filament-manager:latest
+    container_name: 3d-filament-manager
     ports:
-      - "3000:3000"
+      - "${PORT:-7743}:3000"
     volumes:
       - ./data:/app/data
     env_file:
       - .env
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/login || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

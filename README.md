@@ -60,7 +60,7 @@ cp .env.example .env
 
 # 编辑 .env 文件，设置必要的环境变量
 # APP_PASSWORD=your_secret_password
-# NEXT_PUBLIC_BASE_URL=http://localhost:3000
+# NEXT_PUBLIC_BASE_URL=http://localhost:7743
 # DATABASE_URL=file:./data/spool_tracker.db
 ```
 
@@ -111,7 +111,11 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
-4. **停止容器**
+4. **访问应用**
+
+打开浏览器访问 [http://localhost:7743](http://localhost:7743)
+
+5. **停止容器**
 
 ```bash
 docker compose down
@@ -138,7 +142,7 @@ docker compose ps
 | 变量 | 说明 | 示例 |
 |---|---|---|
 | `APP_PASSWORD` | 访问密码（必填） | `your_secret_password` |
-| `NEXT_PUBLIC_BASE_URL` | 生成二维码跳转链接的基础地址 | `https://spools.example.com` |
+| `NEXT_PUBLIC_BASE_URL` | 生成二维码跳转链接的基础地址 | `http://localhost:7743` |
 | `DATABASE_URL` | SQLite 数据库路径 | `file:/app/data/spool_tracker.db` |
 | `TOKEN_SECRET` | Token 签名密钥（可选；不填则回退 `APP_PASSWORD`） | `a-strong-secret` |
 
