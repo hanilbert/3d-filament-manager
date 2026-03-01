@@ -3,6 +3,7 @@ services:
     image: hanilbert/3d-filament-manager:latest
     # 如果需要本地构建，取消注释下面这行
     # build: .
+    platform: linux/amd64
     container_name: 3d-filament-manager
     ports:
       - "${PORT:-7743}:3000"
