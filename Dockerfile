@@ -39,7 +39,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 # Install runtime dependencies
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat su-exec
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -57,16 +57,19 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 # Copy complete production node_modules (includes prisma and all dependencies)
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
+# Copy entrypoint that fixes bind mount permissions before dropping privileges
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
+
 # Create data directory for SQLite and logos
 RUN mkdir -p /app/data/logos && \
     chown -R nextjs:nodejs /app/data
 
-# Switch to non-root user
-USER nextjs
-
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+
+ENTRYPOINT ["./docker-entrypoint.sh"]
 
 # Run migrations then start the server
 CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node server.js"]

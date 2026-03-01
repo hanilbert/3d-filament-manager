@@ -164,7 +164,7 @@ docker compose down
 
 - 数据目录挂载为 `./data`（包含 SQLite 数据库和 Logo 文件）
 - 容器启动时会自动执行 `prisma migrate deploy` 应用数据库迁移
-- 确保 `./data` 目录有正确的读写权限
+- 容器启动时会自动修复 `./data` 目录权限（应用用户 uid/gid=1001）
 
 ### 健康检查
 

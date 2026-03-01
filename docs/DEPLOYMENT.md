@@ -57,9 +57,8 @@ npm run dev
 ```bash
 cp .env.example .env
 
-# 创建数据目录并设置正确权限（容器内用户 uid=1001）
+# 创建数据目录（容器启动时会自动修复权限）
 mkdir -p data/logos
-sudo chown -R 1001:1001 data/
 
 docker compose up -d
 ```
@@ -150,6 +149,8 @@ docker compose logs app
 
 常见原因：数据库目录不存在或权限问题。
 
+默认情况下，容器启动会自动将 `data/` 目录修复为应用用户（uid/gid=1001）可读写，无需手动 `chown`。
+
 ### Q2: 扫码无法调用摄像头
 
 检查：
@@ -166,7 +167,8 @@ ls -la data/logos/
 必要时修复权限：
 
 ```bash
-sudo chown -R 1001:1001 data/logos/
+sudo chown -R 1001:1001 data/
+docker compose restart app
 ```
 
 ### Q4: 重启容器后是否会掉登录
@@ -182,4 +184,3 @@ sudo chown -R 1001:1001 data/logos/
 1. 修改 `.env` 中 `APP_PASSWORD`
 2. 重启服务：`docker compose restart app`
 3. 现有登录可能失效，需重新登录
-

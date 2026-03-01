@@ -263,7 +263,7 @@ export function SpoolLabelPrinter({ filament: gf, qrUrl }: SpoolLabelPrinterProp
             {/* Material bar (black) */}
             <rect x={PAD} y={BAR_Y} width={BAR_W} height={BAR_H} className="black-bg" />
             <text x={PAD + 4} y={BAR_Y + BAR_H - 12} className="white-text text-material">
-              {gf.material}
+              {gf.material + " · " + gf.variant}
             </text>
 
             {/* Parameters — rendered with LXGW font via foreignObject */}
@@ -284,8 +284,8 @@ export function SpoolLabelPrinter({ filament: gf, qrUrl }: SpoolLabelPrinterProp
               >
                 {displayRows.map((row, i) => (
                   <div key={i} style={{ display: "flex", gap: "8px" }}>
-                    <span style={{ minWidth: `${PARAM_VAL_X - PAD}px`, flexShrink: 0 }}>{row.label}:</span>
-                    <span style={{ fontWeight: 600 }}>{row.value}</span>
+                    <span style={{ minWidth: `${PARAM_VAL_X - PAD - 30}px`, flexShrink: 0 , color: "#000"}}>{row.label + "：" + row.value}</span>
+                    {/* <span style={{ fontWeight: 600 }}>{row.value}</span> */}
                   </div>
                 ))}
               </div>
