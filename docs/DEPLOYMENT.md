@@ -56,8 +56,12 @@ npm run dev
 
 ```bash
 cp .env.example .env
+
+# 创建数据目录并设置正确权限（容器内用户 uid=1001）
 mkdir -p data/logos
-docker compose up -d --build
+sudo chown -R 1001:1001 data/
+
+docker compose up -d
 ```
 
 ### 4.2 查看运行状态
