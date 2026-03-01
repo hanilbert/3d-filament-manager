@@ -31,6 +31,9 @@ RUN mkdir -p /app/data && npx prisma migrate deploy
 # Build Next.js (standalone mode configured in next.config.ts)
 RUN npm run build
 
+# Prune dev dependencies to keep only production dependencies
+RUN npm prune --omit=dev
+
 # Stage 3: Production runner
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -51,10 +54,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
-# Copy Prisma dependencies for migrations
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+# Copy complete production node_modules (includes prisma and all dependencies)
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 # Create data directory for SQLite and logos
 RUN mkdir -p /app/data/logos && \
