@@ -45,6 +45,23 @@ CREATE TABLE "new_Filament" (
     "updated_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TEMP TABLE "_filament_id_map" AS
+WITH "ranked_filament" AS (
+  SELECT
+    "id" AS "old_id",
+    FIRST_VALUE("id") OVER (
+      PARTITION BY "brand", COALESCE("material_type", ''), COALESCE("material", ''), "color_name"
+      ORDER BY "updated_at" DESC, "created_at" DESC, "id" ASC
+    ) AS "canonical_id",
+    ROW_NUMBER() OVER (
+      PARTITION BY "brand", COALESCE("material_type", ''), COALESCE("material", ''), "color_name"
+      ORDER BY "updated_at" DESC, "created_at" DESC, "id" ASC
+    ) AS "row_num"
+  FROM "GlobalFilament"
+)
+SELECT "old_id", "canonical_id", "row_num"
+FROM "ranked_filament";
+
 INSERT INTO "new_Filament" (
     "id", "brand", "material", "variant", "color_name", "upc_gtin", "color_hex", "nozzle_temp", "bed_temp",
     "print_speed", "logo_url", "density", "diameter", "nominal_weight", "softening_temp", "chamber_temp",
@@ -55,49 +72,51 @@ INSERT INTO "new_Filament" (
     "drying_temp", "dry_time", "ams_compatibility", "build_plates", "created_at", "updated_at"
 )
 SELECT
-    "id",
-    "brand",
-    COALESCE("material_type", ''),
-    COALESCE("material", ''),
-    "color_name",
-    "upc_gtin",
-    "color_hex",
-    "nozzle_temp",
-    "bed_temp",
-    "print_speed",
-    "logo_url",
-    "density",
-    "diameter",
-    "nominal_weight",
-    "softening_temp",
-    "chamber_temp",
-    "ironing_flow",
-    "ironing_speed",
-    "shrinkage",
-    "empty_spool_weight",
-    "pressure_advance",
-    "fan_min",
-    "fan_max",
-    "first_layer_walls",
-    "first_layer_infill",
-    "first_layer_outer_wall",
-    "first_layer_top_surface",
-    "other_layers_walls",
-    "other_layers_infill",
-    "other_layers_outer_wall",
-    "other_layers_top_surface",
-    "measured_rgb",
-    "top_voted_td",
-    "num_td_votes",
-    "max_volumetric_speed",
-    "flow_ratio",
-    "drying_temp",
-    "dry_time",
-    "ams_compatibility",
-    "build_plates",
-    "created_at",
-    "updated_at"
-FROM "GlobalFilament";
+    gf."id",
+    gf."brand",
+    COALESCE(gf."material_type", ''),
+    COALESCE(gf."material", ''),
+    gf."color_name",
+    gf."upc_gtin",
+    gf."color_hex",
+    gf."nozzle_temp",
+    gf."bed_temp",
+    gf."print_speed",
+    gf."logo_url",
+    gf."density",
+    gf."diameter",
+    gf."nominal_weight",
+    gf."softening_temp",
+    gf."chamber_temp",
+    gf."ironing_flow",
+    gf."ironing_speed",
+    gf."shrinkage",
+    gf."empty_spool_weight",
+    gf."pressure_advance",
+    gf."fan_min",
+    gf."fan_max",
+    gf."first_layer_walls",
+    gf."first_layer_infill",
+    gf."first_layer_outer_wall",
+    gf."first_layer_top_surface",
+    gf."other_layers_walls",
+    gf."other_layers_infill",
+    gf."other_layers_outer_wall",
+    gf."other_layers_top_surface",
+    gf."measured_rgb",
+    gf."top_voted_td",
+    gf."num_td_votes",
+    gf."max_volumetric_speed",
+    gf."flow_ratio",
+    gf."drying_temp",
+    gf."dry_time",
+    gf."ams_compatibility",
+    gf."build_plates",
+    gf."created_at",
+    gf."updated_at"
+FROM "GlobalFilament" gf
+JOIN "_filament_id_map" fmap ON fmap."old_id" = gf."id"
+WHERE fmap."row_num" = 1;
 
 DROP TABLE "GlobalFilament";
 ALTER TABLE "new_Filament" RENAME TO "Filament";
@@ -127,8 +146,15 @@ INSERT INTO "new_Spool" (
     "id", "filament_id", "location_id", "status", "metadata", "created_at", "updated_at"
 )
 SELECT
-    "id", "filament_id", "location_id", "status", "metadata", "created_at", "updated_at"
-FROM "Spool";
+    s."id",
+    fmap."canonical_id" AS "filament_id",
+    s."location_id",
+    s."status",
+    s."metadata",
+    s."created_at",
+    s."updated_at"
+FROM "Spool" s
+JOIN "_filament_id_map" fmap ON fmap."old_id" = s."filament_id";
 
 DROP TABLE "Spool";
 ALTER TABLE "new_Spool" RENAME TO "Spool";
