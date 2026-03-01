@@ -124,6 +124,7 @@ export function SpoolLabelPrinter({ filament: gf, qrUrl }: SpoolLabelPrinterProp
         backgroundColor: "#ffffff",
         fetchRequestInit: { mode: "cors" },
         skipFonts: true,
+        style: { colorScheme: "light" },
       });
       const link = document.createElement("a");
       link.download = `${gf.brand}-${gf.material}-${gf.color_name}.png`;
@@ -278,14 +279,15 @@ export function SpoolLabelPrinter({ filament: gf, qrUrl }: SpoolLabelPrinterProp
                   justifyContent: "center",
                   fontSize: `${PARAM_FONT}px`,
                   fontWeight: 700,
-                  color: "#000",
+                  color: "#000000",
                   lineHeight: `${lineH}px`,
+                  backgroundColor: "#ffffff",
+                  colorScheme: "light",
                 }}
               >
                 {displayRows.map((row, i) => (
-                  <div key={i} style={{ display: "flex", gap: "8px" }}>
-                    <span style={{ minWidth: `${PARAM_VAL_X - PAD - 30}px`, flexShrink: 0 , color: "#000"}}>{row.label + "：" + row.value}</span>
-                    {/* <span style={{ fontWeight: 600 }}>{row.value}</span> */}
+                  <div key={i} style={{ display: "flex", gap: "8px", color: "#000000" }}>
+                    <span style={{ minWidth: `${PARAM_VAL_X - PAD - 30}px`, flexShrink: 0, color: "#000000" }}>{row.label + "：" + row.value}</span>
                   </div>
                 ))}
               </div>
