@@ -20,8 +20,13 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Generate Prisma client
+# Provide DATABASE_URL for Prisma during image build
+ARG DATABASE_URL="file:/app/data/spool_tracker.db"
+ENV DATABASE_URL=${DATABASE_URL}
+
+# Generate Prisma client and prepare SQLite DB for Next.js build-time data access
 RUN npx prisma generate
+RUN mkdir -p /app/data && npx prisma migrate deploy
 
 # Build Next.js (standalone mode configured in next.config.ts)
 RUN npm run build

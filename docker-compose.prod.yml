@@ -8,6 +8,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        DATABASE_URL: ${DATABASE_URL:-file:/app/data/spool_tracker.db}
     image: spool-tracker:latest
     container_name: spool-tracker-prod
     # 仅本地访问，通过反向代理（如 Nginx）对外提供服务

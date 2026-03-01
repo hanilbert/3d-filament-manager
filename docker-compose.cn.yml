@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.cn
+      args:
+        DATABASE_URL: ${DATABASE_URL:-file:/app/data/spool_tracker.db}
     image: spool-tracker:latest
     container_name: spool-tracker
     ports:

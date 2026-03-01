@@ -1,6 +1,10 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DATABASE_URL: ${DATABASE_URL:-file:/app/data/spool_tracker.db}
     image: spool-tracker:latest
     container_name: spool-tracker
     ports:
