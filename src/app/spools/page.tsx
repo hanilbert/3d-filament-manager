@@ -15,6 +15,7 @@ import {
   groupSpools,
   sortGroupedSpools,
 } from "@/components/spools/spool-list-views";
+import { SpoolColorView } from "@/components/spools/spool-color-view";
 import { apiFetch } from "@/lib/fetch";
 
 export default function SpoolsPage() {
@@ -108,6 +109,7 @@ export default function SpoolsPage() {
       />
 
       <div className="app-content">
+        {/* 移动端：三个 tab */}
         <div className="md:hidden">
           <Tabs defaultValue="active">
             <TabsList className="w-full">
@@ -115,7 +117,10 @@ export default function SpoolsPage() {
                 使用中 ({activeGroups.length})
               </TabsTrigger>
               <TabsTrigger value="empty" className="flex-1">
-                已归档线轴 ({emptyGroups.length})
+                已归档 ({emptyGroups.length})
+              </TabsTrigger>
+              <TabsTrigger value="colors" className="flex-1">
+                颜色
               </TabsTrigger>
             </TabsList>
 
@@ -143,40 +148,89 @@ export default function SpoolsPage() {
                 empty={<span>暂无已归档线轴</span>}
               />
             </TabsContent>
+
+            <TabsContent value="colors" className="mt-4">
+              <SpoolColorView
+                groups={activeGroups}
+                loading={loadingActive}
+                empty={
+                  <>
+                    <span>暂无使用中的线轴，</span>
+                    <Link href="/filaments" className="text-primary underline">
+                      去添加
+                    </Link>
+                  </>
+                }
+              />
+            </TabsContent>
           </Tabs>
         </div>
 
-        <div className="hidden space-y-8 md:block">
-          <DesktopSpoolTable
-            title="使用中"
-            mode="active"
-            loading={loadingActive}
-            groups={activeGroups}
-            sortBy={activeSortBy}
-            sortOrder={activeSortOrder}
-            onToggleSort={toggleActiveSort}
-            empty={
-              <>
-                <span>暂无使用中的线轴，</span>
-                <Link href="/filaments" className="text-primary underline">
-                  去添加
-                </Link>
-              </>
-            }
-            onRowClick={(filamentId) => router.push(`/filaments/${filamentId}`)}
-          />
+        {/* 桌面端：三个 tab */}
+        <div className="hidden md:block">
+          <Tabs defaultValue="active">
+            <TabsList className="mb-6">
+              <TabsTrigger value="active">
+                使用中 ({activeGroups.length})
+              </TabsTrigger>
+              <TabsTrigger value="empty">
+                已归档 ({emptyGroups.length})
+              </TabsTrigger>
+              <TabsTrigger value="colors">
+                颜色视图
+              </TabsTrigger>
+            </TabsList>
 
-          <DesktopSpoolTable
-            title="已归档线轴"
-            mode="empty"
-            loading={loadingEmpty}
-            groups={emptyGroups}
-            sortBy={emptySortBy}
-            sortOrder={emptySortOrder}
-            onToggleSort={toggleEmptySort}
-            empty={<span>暂无已归档线轴</span>}
-            onRowClick={(filamentId) => router.push(`/filaments/${filamentId}`)}
-          />
+            <TabsContent value="active">
+              <DesktopSpoolTable
+                title="使用中"
+                mode="active"
+                loading={loadingActive}
+                groups={activeGroups}
+                sortBy={activeSortBy}
+                sortOrder={activeSortOrder}
+                onToggleSort={toggleActiveSort}
+                empty={
+                  <>
+                    <span>暂无使用中的线轴，</span>
+                    <Link href="/filaments" className="text-primary underline">
+                      去添加
+                    </Link>
+                  </>
+                }
+                onRowClick={(filamentId) => router.push(`/filaments/${filamentId}`)}
+              />
+            </TabsContent>
+
+            <TabsContent value="empty">
+              <DesktopSpoolTable
+                title="已归档线轴"
+                mode="empty"
+                loading={loadingEmpty}
+                groups={emptyGroups}
+                sortBy={emptySortBy}
+                sortOrder={emptySortOrder}
+                onToggleSort={toggleEmptySort}
+                empty={<span>暂无已归档线轴</span>}
+                onRowClick={(filamentId) => router.push(`/filaments/${filamentId}`)}
+              />
+            </TabsContent>
+
+            <TabsContent value="colors">
+              <SpoolColorView
+                groups={activeGroups}
+                loading={loadingActive}
+                empty={
+                  <>
+                    <span>暂无使用中的线轴，</span>
+                    <Link href="/filaments" className="text-primary underline">
+                      去添加
+                    </Link>
+                  </>
+                }
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </PageShell>
