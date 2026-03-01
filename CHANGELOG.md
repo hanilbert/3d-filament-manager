@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### 部署与分发
+- Docker Hub 镜像发布：`hanilbert/3d-filament-manager:1.0.0` 和 `latest`
+- 支持直接从 Docker Hub 拉取镜像部署（无需本地构建）
+- GitHub Release 发布：https://github.com/hanilbert/3d-filament-manager/releases/tag/v1.0.0
+
 #### 核心功能
 - 料卷生命周期管理（ACTIVE/EMPTY 状态切换、重新入库、删除）
 - 耗材字典管理（品牌、材料、颜色与完整打印参数档案）

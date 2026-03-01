@@ -90,7 +90,46 @@ npm run dev
 
 ## Docker 部署（推荐）
 
-### 使用 Docker Compose
+### 使用 Docker Hub 镜像（最简单）
+
+直接使用已发布的 Docker 镜像：
+
+```bash
+# 1. 创建 docker-compose.yml
+cat > docker-compose.yml << 'EOF'
+services:
+  app:
+    image: hanilbert/3d-filament-manager:latest
+    container_name: 3d-filament-manager
+    ports:
+      - "7743:3000"
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/login || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+EOF
+
+# 2. 配置环境变量
+cp .env.example .env
+# 编辑 .env 文件，设置 APP_PASSWORD 和 NEXT_PUBLIC_BASE_URL
+
+# 3. 启动容器
+docker compose up -d
+
+# 4. 访问应用
+# http://localhost:7743
+```
+
+### 使用 Docker Compose（本地构建）
+
+如果需要修改代码后本地构建：
 
 1. **配置环境变量**
 
