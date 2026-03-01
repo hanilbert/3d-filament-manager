@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+#### 可观测性
+- 统一结构化日志模块 `src/lib/logger.ts`，替换各 API 路由中分散的 `logApiError()` 函数
+- 支持 `debug / info / warn / error` 四个日志级别，通过 `LOG_LEVEL` 环境变量控制最低输出级别（默认 `info`）
+- 生产环境：JSON 格式同时输出至 stdout 和 `/app/data/logs/app.log`（与 SQLite 同 volume，持久化）
+- 开发环境：带 ANSI 颜色的人类可读格式输出至 stdout
+- 测试环境（`NODE_ENV=test`）：完全静默，不干扰测试输出
+- 敏感字段自动脱敏（`password / token / authorization / cookie` 等替换为 `[REDACTED]`）
+- 写入失败自动降级至 stderr，防递归保护，循环引用/BigInt 安全序列化
+
+---
+
 ## [1.0.0] - 2026-03-01
 
 ### Added

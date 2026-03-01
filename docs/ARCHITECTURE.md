@@ -1,7 +1,7 @@
 # Spool Tracker — 技术架构文档
 
-**版本**: v1.2
-**日期**: 2026-02-28
+**版本**: v1.3
+**日期**: 2026-03-01
 **状态**: 与当前代码实现同步
 
 ---
@@ -19,11 +19,13 @@ Next.js 16 App
   ├─ src/app/* (页面与 API)
   ├─ src/lib/auth.ts (Token 生成/校验)
   ├─ src/lib/api-auth.ts (API 认证守卫)
+  ├─ src/lib/logger.ts (统一结构化日志)
   └─ Prisma Client
 
 SQLite + Files
   ├─ data/spool_tracker.db
-  └─ data/logos/*
+  ├─ data/logos/*
+  └─ data/logs/app.log (生产环境日志，与 DB 同 volume)
 ```
 
 ---
@@ -183,12 +185,53 @@ prisma/
 
 - 构建：Docker 多阶段构建
 - 启动：`prisma migrate deploy && node server.js`
-- 持久化：挂载 `./data:/app/data`
+- 持久化：挂载 `./data:/app/data`（含数据库、Logo 文件、日志文件）
 - 健康检查：访问 `/login`
 
 ---
 
-## 9. 已知限制与后续方向
+## 9. 日志系统
+
+### 9.1 模块
+
+- 入口：`src/lib/logger.ts`（仅服务端，依赖 Node.js `fs` / `os`）
+- 替代了各 API 路由中分散的 `logApiError()` 局部函数
+
+### 9.2 日志级别
+
+通过 `LOG_LEVEL` 环境变量控制最低输出级别（默认 `info`）：
+
+```
+debug < info < warn < error
+```
+
+### 9.3 环境行为
+
+| 环境 | 格式 | 输出目标 |
+|---|---|---|
+| `production` | JSON（含 timestamp/level/context/message/pid/hostname/meta） | stdout + `/app/data/logs/app.log` |
+| `development` | 带 ANSI 颜色的人类可读格式 | stdout |
+| `test` | 无输出 | — |
+
+### 9.4 安全与容错
+
+- 敏感字段自动脱敏：`password / token / authorization / cookie` 等替换为 `[REDACTED]`
+- 循环引用 / BigInt 安全序列化（不抛出异常）
+- 日志目录（`/app/data/logs/`）首次写入时自动创建
+- 文件写入失败降级至 stderr，防递归标记避免日志模块自身产生循环错误
+
+### 9.5 调用方式
+
+```typescript
+import { logger } from "@/lib/logger";
+
+logger.error("api/spools", "POST failed", { error });
+logger.info("api/auth", "login success", { ip });
+```
+
+---
+
+## 10. 已知限制与后续方向
 
 1. 单密码模式，不含多用户与权限控制。
 2. `is_default` 当前仅标记默认位置，未自动参与新料卷分配。
