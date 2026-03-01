@@ -98,7 +98,6 @@ function ColorsContent() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     apiFetch<FilamentItem[]>("/api/filaments")
       .then((data) => { if (!cancelled) setItems(data); })
       .finally(() => { if (!cancelled) setLoading(false); });

@@ -75,6 +75,9 @@ jobs:
 
       - name: 生成 Prisma Client
         run: npx prisma generate
+        env:
+          # Prisma 配置加载时需要 DATABASE_URL
+          DATABASE_URL: file:./data/spool_tracker.db
 
       - name: 运行 Next.js 构建
         run: npm run build
