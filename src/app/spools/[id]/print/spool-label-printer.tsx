@@ -5,7 +5,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import domToImage from "dom-to-image";
+import { toPng } from "html-to-image";
 import localFont from "next/font/local";
 import { Filament } from "@/lib/types";
 
@@ -123,8 +123,8 @@ export function SpoolLabelPrinter({ filament: gf, qrUrl }: SpoolLabelPrinterProp
       const width = labelRef.current.clientWidth;
       const height = labelRef.current.clientHeight;
 
-      const dataUrl = await domToImage.toPng(labelRef.current, {
-        bgcolor: "#ffffff",
+      const dataUrl = await toPng(labelRef.current, {
+        backgroundColor: "#ffffff",
         cacheBust: true,
         width: width * scale,
         height: height * scale,

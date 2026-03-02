@@ -4,7 +4,7 @@ import { useRef, useCallback } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import domToImage from "dom-to-image";
+import { toPng } from "html-to-image";
 import { getLocationType } from "@/lib/location-types";
 
 // --- Types ---
@@ -35,8 +35,8 @@ export function LocationLabelPrinter({ location, qrUrl }: LocationLabelPrinterPr
       const width = labelRef.current.clientWidth;
       const height = labelRef.current.clientHeight;
 
-      const dataUrl = await domToImage.toPng(labelRef.current, {
-        bgcolor: "#ffffff",
+      const dataUrl = await toPng(labelRef.current, {
+        backgroundColor: "#ffffff",
         cacheBust: true,
         width: width * scale,
         height: height * scale,
