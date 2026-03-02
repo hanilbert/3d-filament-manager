@@ -1,13 +1,21 @@
+# 3D Filament Manager — Docker Compose 配置
+# 适用于「局域网直连」和「公网反代」两种部署模式
+# 两种模式共用此文件，仅通过 .env 环境变量区分
+#
+# 快速开始：
+#   cp .env.example .env        # 公网 HTTPS 部署
+#   cp .env.local.example .env  # 局域网 HTTP 部署
+#   docker compose up -d
+
 services:
   app:
     image: hanilbert/3d-filament-manager:latest
-    # 如果需要本地构建，取消注释下面这行
-    # build: .
-    platform: linux/amd64
     container_name: 3d-filament-manager
     ports:
+      # 宿主机端口 → 容器端口（默认 7743:3000）
       - "${PORT:-7743}:3000"
     volumes:
+      # SQLite 数据库 + Logo 文件持久化
       - ./data:/app/data
     env_file:
       - .env
