@@ -5,7 +5,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import { toPng } from "html-to-image";
+import domToImage from "dom-to-image";
 import localFont from "next/font/local";
 import { Filament } from "@/lib/types";
 
@@ -119,12 +119,22 @@ export function SpoolLabelPrinter({ filament: gf, qrUrl }: SpoolLabelPrinterProp
   const handleDownload = useCallback(async () => {
     if (!labelRef.current) return;
     try {
-      const dataUrl = await toPng(labelRef.current, {
-        pixelRatio: 4,
-        backgroundColor: "#ffffff",
-        fetchRequestInit: { mode: "cors" },
-        skipFonts: true,
-        style: { colorScheme: "light" },
+      const scale = 4;
+      const width = labelRef.current.clientWidth;
+      const height = labelRef.current.clientHeight;
+
+      const dataUrl = await domToImage.toPng(labelRef.current, {
+        bgcolor: "#ffffff",
+        cacheBust: true,
+        width: width * scale,
+        height: height * scale,
+        style: {
+          colorScheme: "light",
+          transform: `scale(${scale})`,
+          transformOrigin: "top left",
+          width: `${width}px`,
+          height: `${height}px`,
+        },
       });
       const link = document.createElement("a");
       link.download = `${gf.brand}-${gf.material}-${gf.color_name}.png`;

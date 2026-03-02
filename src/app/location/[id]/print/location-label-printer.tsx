@@ -4,7 +4,7 @@ import { useRef, useCallback } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import { toPng } from "html-to-image";
+import domToImage from "dom-to-image";
 import { getLocationType } from "@/lib/location-types";
 
 // --- Types ---
@@ -31,11 +31,21 @@ export function LocationLabelPrinter({ location, qrUrl }: LocationLabelPrinterPr
   const handleDownload = useCallback(async () => {
     if (!labelRef.current) return;
     try {
-      const dataUrl = await toPng(labelRef.current, {
-        pixelRatio: 4,
-        backgroundColor: "#ffffff",
-        fetchRequestInit: { mode: "cors" },
-        skipFonts: true,
+      const scale = 4;
+      const width = labelRef.current.clientWidth;
+      const height = labelRef.current.clientHeight;
+
+      const dataUrl = await domToImage.toPng(labelRef.current, {
+        bgcolor: "#ffffff",
+        cacheBust: true,
+        width: width * scale,
+        height: height * scale,
+        style: {
+          transform: `scale(${scale})`,
+          transformOrigin: "top left",
+          width: `${width}px`,
+          height: `${height}px`,
+        },
       });
       const link = document.createElement("a");
       const safeName = location.name.replace(/[/\\?%*:|"<>]/g, "-");
