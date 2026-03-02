@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
   const expiresAt = Date.now() + TOKEN_TTL;
   const maxAge = Math.floor(TOKEN_TTL / 1000);
 
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  const secure = process.env.COOKIE_SECURE !== "false" && process.env.NODE_ENV === "production" ? "; Secure" : "";
   const cookie = `spool_tracker_token=${token}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Lax${secure}`;
 
   return NextResponse.json(
