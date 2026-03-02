@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-auth";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
-import { v4 as uuidv4 } from "uuid";
 import { detectImageExtension } from "@/lib/image-signature";
 import { logger } from "@/lib/logger";
 
@@ -53,7 +52,7 @@ export async function POST(request: NextRequest) {
       logosDirReady = true;
     }
 
-    const filename = `${uuidv4()}.${ext}`;
+    const filename = `${crypto.randomUUID()}.${ext}`;
     await writeFile(join(logosDir, filename), buffer);
 
     return NextResponse.json({ url: `/api/logos/${filename}` }, { status: 201 });
