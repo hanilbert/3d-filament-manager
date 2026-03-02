@@ -12,7 +12,7 @@ export default function SpoolFilamentDetailPage() {
       titleMode="full"
       subtitleMode="material"
       spoolSectionLabel="线轴列表"
-      showSpools={false}
+      showSpools={true}
       showEditButton={false}
     />
   );
