@@ -163,7 +163,7 @@ export default function SpoolsPage() {
                 </Link>
               </>
             }
-            onRowClick={(filamentId) => router.push(`/filaments/${filamentId}`)}
+            onRowClick={(filamentId) => router.push(`/spools/details/${filamentId}`)}
           />
 
           <DesktopSpoolTable
@@ -175,7 +175,7 @@ export default function SpoolsPage() {
             sortOrder={emptySortOrder}
             onToggleSort={toggleEmptySort}
             empty={<span>暂无已归档线轴</span>}
-            onRowClick={(filamentId) => router.push(`/filaments/${filamentId}`)}
+            onRowClick={(filamentId) => router.push(`/spools/details/${filamentId}`)}
           />
         </div>
       </div>

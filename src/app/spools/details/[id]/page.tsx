@@ -1,10 +1,19 @@
-import { redirect } from "next/navigation";
+"use client";
 
-export default async function SpoolsDetailsRedirect({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  redirect(`/filaments/${id}`);
+import { useParams } from "next/navigation";
+import { FilamentDetailView } from "@/components/filament/FilamentDetailView";
+
+export default function SpoolFilamentDetailPage() {
+  const { id } = useParams<{ id: string }>();
+
+  return (
+    <FilamentDetailView
+      filamentId={id}
+      titleMode="full"
+      subtitleMode="material"
+      spoolSectionLabel="线轴列表"
+      showSpools={false}
+      showEditButton={false}
+    />
+  );
 }

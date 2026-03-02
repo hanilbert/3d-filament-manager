@@ -12,6 +12,7 @@ export default function FilamentDetailPage() {
       titleMode="full"
       subtitleMode="material"
       spoolSectionLabel="线轴列表"
+      showSpools={false}
     />
   );
 }

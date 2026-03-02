@@ -148,7 +148,7 @@ export function MobileSpoolList({
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card">
       {groups.map((group) => (
-        <Link key={group.filamentId} href={`/filaments/${group.filamentId}`}>
+        <Link key={group.filamentId} href={`/spools/details/${group.filamentId}`}>
           <div className="flex items-start gap-3 border-b border-border/60 px-3 py-3 last:border-0">
             <div className="min-w-0 flex-1 space-y-1.5">
               <div className="flex items-center justify-between gap-2">
@@ -315,7 +315,7 @@ export function DesktopSpoolTable({
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Link
-                        href={`/filaments/${group.filamentId}`}
+                        href={`/spools/details/${group.filamentId}`}
                         className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border transition-colors hover:bg-muted"
                         title="查看详情"
                       >

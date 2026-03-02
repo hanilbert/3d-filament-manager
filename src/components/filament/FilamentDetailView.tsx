@@ -35,6 +35,8 @@ interface FilamentDetailViewProps {
   titleMode: "full" | "brand-color";
   subtitleMode: "material" | "material-variant";
   spoolSectionLabel: string;
+  showSpools?: boolean;
+  showEditButton?: boolean;
 }
 
 function shortId(id: string): string {
@@ -46,6 +48,8 @@ export function FilamentDetailView({
   titleMode,
   subtitleMode,
   spoolSectionLabel,
+  showSpools = true,
+  showEditButton = true,
 }: FilamentDetailViewProps) {
   const router = useRouter();
   const [item, setItem] = useState<FilamentWithSpools | null>(null);
@@ -128,16 +132,19 @@ export function FilamentDetailView({
           </button>
         }
         actions={
-          <Link
-            href={`/filaments/${filamentId}/edit`}
-            className="text-sm font-medium text-primary"
-          >
-            编辑
-          </Link>
+          showEditButton ? (
+            <Link
+              href={`/filaments/${filamentId}/edit`}
+              className="text-sm font-medium text-primary"
+            >
+              编辑
+            </Link>
+          ) : undefined
         }
       />
 
       <div className="app-content grid grid-cols-1 gap-4 md:grid-cols-2">
+        {showSpools && (
         <DetailSectionCard
           title={`${spoolSectionLabel}（${item.spools.length}）`}
           className="md:col-span-2"
@@ -272,6 +279,7 @@ export function FilamentDetailView({
             </>
           )}
         </DetailSectionCard>
+        )}
 
         <DetailSectionCard title="耗材概览" className="md:col-span-2">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
