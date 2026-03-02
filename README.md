@@ -90,74 +90,29 @@ npm run dev
 
 ## Docker 部署（推荐）
 
-### 使用 Docker Hub 镜像（最简单）
+支持两种部署模式，详细步骤请参阅 [部署指南](docs/DEPLOYMENT.md)。
 
-直接使用已发布的 Docker 镜像：
+| 场景 | 模板 | 说明 |
+|------|------|------|
+| 局域网 / NAS | `cp .env.local.example .env` | HTTP 直连，无需域名和 SSL |
+| 公网 VPS | `cp .env.example .env` | HTTPS + Nginx 反代 |
+
+### 快速开始
 
 ```bash
-# 1. 创建 docker-compose.yml
-cat > docker-compose.yml << 'EOF'
-services:
-  app:
-    image: hanilbert/3d-filament-manager:latest
-    container_name: 3d-filament-manager
-    ports:
-      - "7743:3000"
-    volumes:
-      - ./data:/app/data
-    env_file:
-      - .env
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/login || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
-EOF
+# 1. 选择环境变量模板（二选一）
+cp .env.local.example .env   # 局域网 HTTP 部署
+# cp .env.example .env       # 公网 HTTPS 部署
 
-# 2. 配置环境变量
-cp .env.example .env
-# 编辑 .env 文件，设置 APP_PASSWORD 和 NEXT_PUBLIC_BASE_URL
+# 2. 编辑 .env，设置 APP_PASSWORD 和 NEXT_PUBLIC_BASE_URL
 
-# 3. 启动容器
+# 3. 创建数据目录并启动
+mkdir -p data/logos
 docker compose up -d
 
 # 4. 访问应用
-# http://localhost:7743
-```
-
-### 使用 Docker Compose（本地构建）
-
-如果需要修改代码后本地构建：
-
-1. **配置环境变量**
-
-```bash
-cp .env.example .env
-# 编辑 .env 文件，设置生产环境的配置
-```
-
-2. **构建并启动容器**
-
-```bash
-docker compose up -d --build
-```
-
-3. **查看日志**
-
-```bash
-docker compose logs -f
-```
-
-4. **访问应用**
-
-打开浏览器访问 [http://localhost:7743](http://localhost:7743)
-
-5. **停止容器**
-
-```bash
-docker compose down
+# 局域网：http://<你的IP>:7743
+# 公网：https://your-domain.com
 ```
 
 ### 数据持久化
@@ -166,24 +121,18 @@ docker compose down
 - 容器启动时会自动执行 `prisma migrate deploy` 应用数据库迁移
 - 容器启动时会自动修复 `./data` 目录权限（应用用户 uid/gid=1001）
 
-### 健康检查
-
-容器配置了健康检查，每 30 秒检查一次应用是否正常运行。可以通过以下命令查看健康状态：
-
-```bash
-docker compose ps
-```
-
 ---
 
 ## 环境变量
 
-| 变量 | 说明 | 示例 |
-|---|---|---|
-| `APP_PASSWORD` | 访问密码（必填） | `your_secret_password` |
-| `NEXT_PUBLIC_BASE_URL` | 生成二维码跳转链接的基础地址 | `http://localhost:7743` |
-| `DATABASE_URL` | SQLite 数据库路径 | `file:/app/data/spool_tracker.db` |
-| `TOKEN_SECRET` | Token 签名密钥（可选；不填则回退 `APP_PASSWORD`） | `a-strong-secret` |
+| 变量 | 说明 | 局域网示例 | 公网示例 |
+|---|---|---|---|
+| `APP_PASSWORD` | 访问密码（必填） | `mypassword` | `mypassword` |
+| `NEXT_PUBLIC_BASE_URL` | 二维码跳转基地址 | `http://192.168.1.100:7743` | `https://spool.example.com` |
+| `DATABASE_URL` | 数据库路径 | `file:/app/data/spool_tracker.db` | `file:/app/data/spool_tracker.db` |
+| `TOKEN_SECRET` | 签名密钥（可选） | —（回退 APP_PASSWORD） | `随机强密钥` |
+| `PORT` | 宿主机端口（默认 7743） | `7743` | `7743` |
+| `COOKIE_SECURE` | Cookie Secure 标记 | `false`（必须） | 留空（默认 true） |
 
 ---
 
@@ -566,7 +515,8 @@ npx prisma db push       # 直接同步数据库结构（不创建迁移）
 
 ## 注意事项
 
-- 扫码依赖 HTTPS 或 localhost（浏览器摄像头权限限制）
+- 扫码依赖 HTTPS 或 localhost（浏览器摄像头权限限制），局域网 HTTP 下的解决方案详见 [部署指南](docs/DEPLOYMENT.md#a5-摄像头扫码说明)
+- 局域网 HTTP 部署必须设置 `COOKIE_SECURE=false`，否则登录 Cookie 无法写入
 - SQLite 适合个人/小规模并发场景
 - 当前为单密码模式，不含多用户权限体系
 
