@@ -4,6 +4,7 @@ import "./globals.css";
 import { ConditionalNav } from "@/components/ConditionalNav";
 import { ConditionalSideNav } from "@/components/ConditionalSideNav";
 import { ThemeProvider } from "@/components/theme/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,6 +47,7 @@ export default function RootLayout({
           <div className="md:hidden">
             <ConditionalNav />
           </div>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

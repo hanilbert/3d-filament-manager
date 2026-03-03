@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, PackagePlus } from "lucide-react";
+import { ArrowLeft, Loader2, PackagePlus, Pencil } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ColorSwatch } from "@/components/ColorSwatch";
 import { SortHeader } from "@/components/SortHeader";
@@ -49,7 +50,6 @@ export default function BrandDetailPage() {
   const [sortBy, setSortBy] = useState<SortField>("color_name");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [addingId, setAddingId] = useState<string | null>(null);
-  const [addedId, setAddedId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -74,11 +74,11 @@ export default function BrandDetailPage() {
         method: "POST",
         body: JSON.stringify({ filament_id: filamentId }),
       });
-      setAddingId(null);
-      setAddedId(filamentId);
-      setTimeout(() => setAddedId(null), 2000);
+      toast.success("已添加线轴");
       void load();
     } catch {
+      toast.error("添加线轴失败");
+    } finally {
       setAddingId(null);
     }
   }
@@ -163,10 +163,19 @@ export default function BrandDetailPage() {
                               disabled={addingId === item.id}
                               onClick={(e) => handleAddSpool(item.id, e)}
                             >
-                              <PackagePlus className="size-3.5" />
-                              {addingId === item.id ? "添加中..." : addedId === item.id ? "已添加 ✓" : "添加线轴"}
+                              {addingId === item.id ? (
+                                <Loader2 className="size-3.5 animate-spin" />
+                              ) : (
+                                <PackagePlus className="size-3.5" />
+                              )}
+                              添加线轴
                             </Button>
-                            <Link href={`/filaments/${item.id}/edit`} onClick={(e) => e.stopPropagation()} className="inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-medium hover:bg-muted transition-colors">修改耗材</Link>
+                            <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs" asChild>
+                              <Link href={`/filaments/${item.id}/edit`} onClick={(e) => e.stopPropagation()}>
+                                <Pencil className="size-3.5" />
+                                修改耗材
+                              </Link>
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -204,10 +213,19 @@ export default function BrandDetailPage() {
                             disabled={addingId === item.id}
                             onClick={(e) => handleAddSpool(item.id, e)}
                           >
-                            <PackagePlus className="size-3.5" />
-                            {addingId === item.id ? "..." : addedId === item.id ? "✓" : "线轴"}
+                            {addingId === item.id ? (
+                              <Loader2 className="size-3.5 animate-spin" />
+                            ) : (
+                              <PackagePlus className="size-3.5" />
+                            )}
+                            线轴
                           </Button>
-                          <Link href={`/filaments/${item.id}/edit`} className="inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-medium hover:bg-muted transition-colors">修改耗材</Link>
+                          <Button variant="outline" size="sm" className="gap-1 h-8 text-xs" asChild>
+                            <Link href={`/filaments/${item.id}/edit`} onClick={(e) => e.stopPropagation()}>
+                              <Pencil className="size-3.5" />
+                              修改
+                            </Link>
+                          </Button>
                         </div>
                       </div>
                     ))}
