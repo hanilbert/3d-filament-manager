@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, PackagePlus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { ColorSwatch } from "@/components/ColorSwatch";
 import { SortHeader } from "@/components/SortHeader";
 import { PageHeader } from "@/components/layout/page-header";
@@ -47,20 +48,40 @@ export default function BrandDetailPage() {
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<SortField>("color_name");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
+  const [addingId, setAddingId] = useState<string | null>(null);
+  const [addedId, setAddedId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ brand, sortBy, sortOrder, exact: "1" });
+      const data = await apiFetch<FilamentItem[]>(`/api/filaments?${params.toString()}`);
+      setItems(data);
+    } finally {
+      setLoading(false);
+    }
+  }, [brand, sortBy, sortOrder]);
 
   useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams({ brand, sortBy, sortOrder, exact: "1" });
-        const data = await apiFetch<FilamentItem[]>(`/api/filaments?${params.toString()}`);
-        setItems(data);
-      } finally {
-        setLoading(false);
-      }
-    }
     void load();
-  }, [brand, sortBy, sortOrder]);
+  }, [load]);
+
+  async function handleAddSpool(filamentId: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    setAddingId(filamentId);
+    try {
+      await apiFetch<{ id: string }>("/api/spools", {
+        method: "POST",
+        body: JSON.stringify({ filament_id: filamentId }),
+      });
+      setAddingId(null);
+      setAddedId(filamentId);
+      setTimeout(() => setAddedId(null), 2000);
+      void load();
+    } catch {
+      setAddingId(null);
+    }
+  }
 
   const groupedItems = useMemo<GroupedItems[]>(() => {
     const groups = new Map<string, GroupedItems>();
@@ -134,7 +155,19 @@ export default function BrandDetailPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <Link href={`/filaments/${item.id}/edit`} onClick={(e) => e.stopPropagation()} className="inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-medium hover:bg-muted transition-colors">修改耗材</Link>
+                          <div className="inline-flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1.5 h-8 text-xs"
+                              disabled={addingId === item.id}
+                              onClick={(e) => handleAddSpool(item.id, e)}
+                            >
+                              <PackagePlus className="size-3.5" />
+                              {addingId === item.id ? "添加中..." : addedId === item.id ? "已添加 ✓" : "添加线轴"}
+                            </Button>
+                            <Link href={`/filaments/${item.id}/edit`} onClick={(e) => e.stopPropagation()} className="inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-medium hover:bg-muted transition-colors">修改耗材</Link>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -163,7 +196,19 @@ export default function BrandDetailPage() {
                             </div>
                           </div>
                         </Link>
-                        <Link href={`/filaments/${item.id}/edit`} className="inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-medium hover:bg-muted transition-colors">修改耗材</Link>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1 h-8 text-xs"
+                            disabled={addingId === item.id}
+                            onClick={(e) => handleAddSpool(item.id, e)}
+                          >
+                            <PackagePlus className="size-3.5" />
+                            {addingId === item.id ? "..." : addedId === item.id ? "✓" : "线轴"}
+                          </Button>
+                          <Link href={`/filaments/${item.id}/edit`} className="inline-flex h-8 items-center rounded-md border border-border px-3 text-xs font-medium hover:bg-muted transition-colors">修改耗材</Link>
+                        </div>
                       </div>
                     ))}
                   </div>

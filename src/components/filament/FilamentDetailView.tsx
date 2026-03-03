@@ -18,7 +18,7 @@ import {
   hasVisibleItems,
 } from "@/lib/filament-detail-sections";
 import { Filament } from "@/lib/types";
-import { ArrowLeft, ExternalLink, PackagePlus, Trash2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, PackagePlus, Pencil, Trash2 } from "lucide-react";
 
 interface FilamentWithSpools extends Filament {
   spools: Array<{
@@ -147,12 +147,12 @@ export function FilamentDetailView({
                 <PackagePlus className="size-4" />
                 {adding ? "添加中..." : addedSuccess ? "已添加 ✓" : "添加线轴"}
               </Button>
-              <Link
-                href={`/filaments/${filamentId}/edit`}
-                className="text-sm font-medium text-primary"
-              >
-                编辑
-              </Link>
+              <Button variant="outline" size="sm" className="gap-1.5" asChild>
+                <Link href={`/filaments/${filamentId}/edit`}>
+                  <Pencil className="size-3.5" />
+                  编辑
+                </Link>
+              </Button>
             </>
           ) : undefined
         }
