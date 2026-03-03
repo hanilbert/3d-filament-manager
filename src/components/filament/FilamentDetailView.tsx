@@ -18,7 +18,7 @@ import {
   hasVisibleItems,
 } from "@/lib/filament-detail-sections";
 import { Filament } from "@/lib/types";
-import { ArrowLeft, ExternalLink, Trash2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, PackagePlus, Trash2 } from "lucide-react";
 
 interface FilamentWithSpools extends Filament {
   spools: Array<{
@@ -55,6 +55,7 @@ export function FilamentDetailView({
   const [item, setItem] = useState<FilamentWithSpools | null>(null);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
+  const [addedSuccess, setAddedSuccess] = useState(false);
   const [deletingSpoolId, setDeletingSpoolId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -80,6 +81,8 @@ export function FilamentDetailView({
         body: JSON.stringify({ filament_id: filamentId }),
       });
       setAdding(false);
+      setAddedSuccess(true);
+      setTimeout(() => setAddedSuccess(false), 2000);
       void load();
     } catch {
       setAdding(false);
@@ -133,12 +136,24 @@ export function FilamentDetailView({
         }
         actions={
           showEditButton ? (
-            <Link
-              href={`/filaments/${filamentId}/edit`}
-              className="text-sm font-medium text-primary"
-            >
-              编辑
-            </Link>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAddSpool}
+                disabled={adding}
+                className="gap-1.5"
+              >
+                <PackagePlus className="size-4" />
+                {adding ? "添加中..." : addedSuccess ? "已添加 ✓" : "添加线轴"}
+              </Button>
+              <Link
+                href={`/filaments/${filamentId}/edit`}
+                className="text-sm font-medium text-primary"
+              >
+                编辑
+              </Link>
+            </>
           ) : undefined
         }
       />
