@@ -19,6 +19,7 @@ import {
 } from "@/lib/filament-detail-sections";
 import { Filament } from "@/lib/types";
 import { ArrowLeft, ExternalLink, PackagePlus, Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface FilamentWithSpools extends Filament {
   spools: Array<{
@@ -55,7 +56,6 @@ export function FilamentDetailView({
   const [item, setItem] = useState<FilamentWithSpools | null>(null);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
-  const [addedSuccess, setAddedSuccess] = useState(false);
   const [deletingSpoolId, setDeletingSpoolId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -80,11 +80,11 @@ export function FilamentDetailView({
         method: "POST",
         body: JSON.stringify({ filament_id: filamentId }),
       });
-      setAdding(false);
-      setAddedSuccess(true);
-      setTimeout(() => setAddedSuccess(false), 2000);
+      toast.success("已添加线轴");
       void load();
     } catch {
+      toast.error("添加线轴失败");
+    } finally {
       setAdding(false);
     }
   }
@@ -94,9 +94,10 @@ export function FilamentDetailView({
     try {
       await apiFetch(`/api/spools/${deletingSpoolId}`, { method: "DELETE" });
       setDeletingSpoolId(null);
+      toast.success("已删除线轴");
       void load();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "删除线轴失败");
+      toast.error(err instanceof Error ? err.message : "删除线轴失败");
       setDeletingSpoolId(null);
     }
   }
@@ -145,7 +146,7 @@ export function FilamentDetailView({
                 className="gap-1.5"
               >
                 <PackagePlus className="size-4" />
-                {adding ? "添加中..." : addedSuccess ? "已添加 ✓" : "添加线轴"}
+                {adding ? "添加中..." : "添加线轴"}
               </Button>
               <Button variant="outline" size="sm" className="gap-1.5" asChild>
                 <Link href={`/filaments/${filamentId}/edit`}>
