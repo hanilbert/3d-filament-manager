@@ -127,7 +127,7 @@ export default function BrandDetailPage() {
         ) : (
           <>
             <div className="hidden md:block border border-border rounded-lg overflow-hidden">
-              <table className="w-full table-fixed text-sm">
+              <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-muted/30 border-b border-border">
                     <th className="text-left px-4 py-3 font-medium whitespace-nowrap"><SortHeader field="brand" label="品牌" sortBy={sortBy} sortOrder={sortOrder} onToggle={toggleSort} /></th>
@@ -135,7 +135,7 @@ export default function BrandDetailPage() {
                     <th className="text-left px-4 py-3 font-medium whitespace-nowrap"><SortHeader field="variant" label="类型" sortBy={sortBy} sortOrder={sortOrder} onToggle={toggleSort} /></th>
                     <th className="text-left px-4 py-3 font-medium whitespace-nowrap"><SortHeader field="color_name" label="颜色" sortBy={sortBy} sortOrder={sortOrder} onToggle={toggleSort} /></th>
                     <th className="text-left px-4 py-3 font-medium whitespace-nowrap"><SortHeader field="color_hex" label="RGB HEX" sortBy={sortBy} sortOrder={sortOrder} onToggle={toggleSort} /></th>
-                    <th className="text-right px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">操作</th>
+                    <th className="w-[160px] text-center px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -154,12 +154,13 @@ export default function BrandDetailPage() {
                             <span className="font-mono text-xs">{colorHex}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="inline-flex items-center gap-2">
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex justify-center items-center gap-2">
                             <Button
                               variant="outline"
                               size="sm"
-                              className="gap-1.5 h-8 text-xs"
+                              title="添加线轴"
+                              className="h-8 w-8 xl:w-auto xl:gap-1.5 px-0 xl:px-3 text-xs"
                               disabled={addingId === item.id}
                               onClick={(e) => handleAddSpool(item.id, e)}
                             >
@@ -168,12 +169,12 @@ export default function BrandDetailPage() {
                               ) : (
                                 <PackagePlus className="size-3.5" />
                               )}
-                              添加线轴
+                              <span className="hidden xl:inline">添加线轴</span>
                             </Button>
-                            <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs" asChild>
+                            <Button variant="outline" size="sm" title="修改耗材" className="h-8 w-8 xl:w-auto xl:gap-1.5 px-0 xl:px-3 text-xs" asChild>
                               <Link href={`/filaments/${item.id}/edit`} onClick={(e) => e.stopPropagation()}>
                                 <Pencil className="size-3.5" />
-                                修改耗材
+                                <span className="hidden xl:inline">修改耗材</span>
                               </Link>
                             </Button>
                           </div>
