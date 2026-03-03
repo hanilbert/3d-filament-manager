@@ -18,23 +18,32 @@ export async function GET(
   if (authError) return authError;
 
   const { id } = await params;
-  const item = await prisma.filament.findUnique({
-    where: { id },
-    include: {
-      spools: {
-        include: { location: true },
-        orderBy: { created_at: "desc" },
+
+  // 并行查询耗材详情与 logo fallback，避免串行等待
+  // 注：如果 item 有 logo_url，fallbackLogoPromise 会解析为 null（跳过额外查询）
+  const [item, fallbackLogoUrl] = await Promise.all([
+    prisma.filament.findUnique({
+      where: { id },
+      include: {
+        spools: {
+          include: { location: true },
+          orderBy: { created_at: "desc" },
+        },
       },
-    },
-  });
+    }),
+    // 预取 brand 和 logo_url 用于判断是否需要 fallback
+    prisma.filament
+      .findUnique({ where: { id }, select: { brand: true, logo_url: true } })
+      .then((base) => {
+        if (!base || base.logo_url) return null;
+        return findSharedBrandLogoUrl(base.brand, id);
+      }),
+  ]);
 
   if (!item) return NextResponse.json({ error: "未找到" }, { status: 404 });
 
-  if (!item.logo_url) {
-    const sharedLogoUrl = await findSharedBrandLogoUrl(item.brand, item.id);
-    if (sharedLogoUrl) {
-      return NextResponse.json({ ...item, logo_url: sharedLogoUrl });
-    }
+  if (!item.logo_url && fallbackLogoUrl) {
+    return NextResponse.json({ ...item, logo_url: fallbackLogoUrl });
   }
 
   return NextResponse.json(item);

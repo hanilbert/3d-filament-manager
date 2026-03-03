@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -16,9 +17,22 @@ import { PageHeader } from "@/components/layout/page-header";
 import { PageShell } from "@/components/layout/page-shell";
 import { apiFetch } from "@/lib/fetch";
 import { getFilamentDetailSections, hasVisibleItems } from "@/lib/filament-detail-sections";
-import { SpoolLabelPrinter } from "./print/spool-label-printer";
 import { Filament } from "@/lib/types";
 import { ArrowLeft } from "lucide-react";
+
+// 懒加载重型打印组件（含 11MB LXGW 字体 + html-to-image）
+// 仅在用户点击"标签预览"时才加载，避免污染首屏包体
+const SpoolLabelPrinter = dynamic(
+  () => import("./print/spool-label-printer").then((mod) => mod.SpoolLabelPrinter),
+  {
+    loading: () => (
+      <div className="p-8 text-center text-muted-foreground animate-pulse bg-muted/30 rounded-lg">
+        正在准备标签打印机...
+      </div>
+    ),
+    ssr: false,
+  }
+);
 
 interface SpoolLocation {
   id: string;

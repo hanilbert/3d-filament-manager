@@ -112,4 +112,6 @@ model Spool {
   @@index([filament_id])
   @@index([location_id])
   @@index([status])
+  @@index([created_at])
+  @@index([status, created_at])
 }

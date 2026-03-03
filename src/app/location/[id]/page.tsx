@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -13,8 +14,21 @@ import { PageHeader } from "@/components/layout/page-header";
 import { PageShell } from "@/components/layout/page-shell";
 import { apiFetch } from "@/lib/fetch";
 import { getLocationType } from "@/lib/location-types";
-import { LocationLabelPrinter } from "./print/location-label-printer";
 import { ArrowLeft, ChevronRight } from "lucide-react";
+
+// 懒加载位置标签打印组件（含 html-to-image）
+// 仅在用户点击"标签预览"时才加载
+const LocationLabelPrinter = dynamic(
+  () => import("./print/location-label-printer").then((mod) => mod.LocationLabelPrinter),
+  {
+    loading: () => (
+      <div className="p-8 text-center text-muted-foreground animate-pulse bg-muted/30 rounded-lg">
+        正在准备标签打印机...
+      </div>
+    ),
+    ssr: false,
+  }
+);
 
 interface LocationDetail {
   id: string;

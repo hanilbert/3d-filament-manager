@@ -185,13 +185,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "缺少 filament_id" }, { status: 400 });
     }
 
-    const exists = await prisma.filament.findUnique({
-      where: { id: filamentId },
-    });
-    if (!exists) {
-      return NextResponse.json({ error: "耗材不存在" }, { status: 404 });
-    }
-
+    // 直接 create，通过外键约束（P2003）捕获耗材不存在的情况
+    // 避免额外的 findUnique 预检查，减少一次 DB 往返
     const spool = await prisma.spool.create({
       data: { filament_id: filamentId, status: "ACTIVE" },
       include: {
@@ -202,6 +197,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(spool, { status: 201 });
   } catch (error: unknown) {
+    const code = (error as { code?: string })?.code;
+    // P2003 = 外键约束失败：filament_id 指向的耗材不存在
+    if (code === "P2003") {
+      return NextResponse.json({ error: "耗材不存在" }, { status: 404 });
+    }
     logger.error("api/spools", "POST failed", { error });
     return NextResponse.json({ error: "创建失败" }, { status: 500 });
   }
