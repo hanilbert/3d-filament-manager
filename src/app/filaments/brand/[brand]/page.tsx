@@ -160,6 +160,7 @@ export default function BrandDetailPage() {
                               variant="outline"
                               size="sm"
                               title="添加线轴"
+                              aria-label="添加线轴"
                               className="h-8 w-8 xl:w-auto xl:gap-1.5 px-0 xl:px-3 text-xs"
                               disabled={addingId === item.id}
                               onClick={(e) => handleAddSpool(item.id, e)}
@@ -171,7 +172,7 @@ export default function BrandDetailPage() {
                               )}
                               <span className="hidden xl:inline">添加线轴</span>
                             </Button>
-                            <Button variant="outline" size="sm" title="修改耗材" className="h-8 w-8 xl:w-auto xl:gap-1.5 px-0 xl:px-3 text-xs" asChild>
+                            <Button variant="outline" size="sm" title="修改耗材" aria-label="修改耗材" className="h-8 w-8 xl:w-auto xl:gap-1.5 px-0 xl:px-3 text-xs" asChild>
                               <Link href={`/filaments/${item.id}/edit`} onClick={(e) => e.stopPropagation()}>
                                 <Pencil className="size-3.5" />
                                 <span className="hidden xl:inline">修改耗材</span>
