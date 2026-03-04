@@ -3,6 +3,7 @@
 import { ReactNode, useEffect, useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { QRScanner } from "@/components/QRScanner";
 import { apiFetch } from "@/lib/fetch";
@@ -96,6 +97,7 @@ export function GlobalScanDialog({ trigger }: GlobalScanDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [state, dispatch] = useReducer(dialogReducer, INITIAL_STATE);
+  const [confirmCreateOpen, setConfirmCreateOpen] = useState(false);
 
   useEffect(() => {
     if (!open) dispatch({ type: "RESET" });
@@ -131,7 +133,7 @@ export function GlobalScanDialog({ trigger }: GlobalScanDialogProps) {
         );
         if (items.length > 0) {
           setOpen(false);
-          router.push(`/filaments/${items[0].id}`);
+          router.push(`/spools/details/${items[0].id}`);
           return;
         }
         dispatch({ type: "BARCODE_NOT_FOUND", upcGtin: target.upcGtin, statusMsg: `数据库未收录 UPC/GTIN：${target.upcGtin}` });
@@ -166,12 +168,19 @@ export function GlobalScanDialog({ trigger }: GlobalScanDialogProps) {
 
   function handleCreateFilament() {
     if (!state.missingUpcGtin) return;
+    setConfirmCreateOpen(true);
+  }
+
+  function handleConfirmCreate() {
+    if (!state.missingUpcGtin) return;
     setOpen(false);
+    setConfirmCreateOpen(false);
     router.push(`/filaments/new?upc_gtin=${encodeURIComponent(state.missingUpcGtin)}`);
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <>
+      <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
@@ -272,5 +281,32 @@ export function GlobalScanDialog({ trigger }: GlobalScanDialogProps) {
         )}
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={confirmCreateOpen} onOpenChange={setConfirmCreateOpen}>
+      <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="text-lg font-semibold tracking-tight">
+            未找到相关耗材
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-[15px] leading-relaxed text-muted-foreground/80">
+            数据库尚未收录此 UPC (条码：{state.missingUpcGtin})。
+            <br />
+            是否需要前往<span className="font-medium text-foreground">"耗材数据库"</span>登记新规格？
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="mt-4 gap-2">
+          <AlertDialogCancel className="rounded-xl border-none bg-secondary hover:bg-secondary/80">
+            取消
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleConfirmCreate}
+            className="rounded-xl bg-primary px-6 font-medium text-primary-foreground transition-all hover:scale-[1.02]"
+          >
+            去登记
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageShell } from "@/components/layout/page-shell";
@@ -15,57 +15,64 @@ import {
   groupSpools,
   sortGroupedSpools,
 } from "@/components/spools/spool-list-views";
+import { Pagination } from "@/components/ui/pagination";
 import { apiFetch } from "@/lib/fetch";
 
-export default function SpoolsPage() {
+interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+function SpoolsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [activeSpools, setActiveSpools] = useState<Spool[]>([]);
   const [emptySpools, setEmptySpools] = useState<Spool[]>([]);
-  const [loadingActive, setLoadingActive] = useState(true);
-  const [loadingEmpty, setLoadingEmpty] = useState(true);
+  const [totalActive, setTotalActive] = useState(0);
+  const [totalEmpty, setTotalEmpty] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   const [activeSortBy, setActiveSortBy] = useState<SortField>("created_at");
   const [activeSortOrder, setActiveSortOrder] = useState<SortOrder>("desc");
   const [emptySortBy, setEmptySortBy] = useState<SortField>("updated_at");
   const [emptySortOrder, setEmptySortOrder] = useState<SortOrder>("desc");
 
-  useEffect(() => {
-    let cancelled = false;
+  const currentPage = Number(searchParams.get("page")) || 1;
+  const pageSize = 20;
 
-    async function loadActive() {
-      setLoadingActive(true);
-      try {
-        const data = await apiFetch<Spool[]>("/api/spools?status=ACTIVE");
-        if (!cancelled) setActiveSpools(data);
-      } finally {
-        if (!cancelled) setLoadingActive(false);
-      }
-    }
-
-    void loadActive();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", page.toString());
+    router.push(`/spools?${params.toString()}`);
+  };
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadEmpty() {
-      setLoadingEmpty(true);
+    async function loadData() {
+      setLoading(true);
       try {
-        const data = await apiFetch<Spool[]>("/api/spools?status=EMPTY");
-        if (!cancelled) setEmptySpools(data);
+        const [activeRes, emptyRes] = await Promise.all([
+          apiFetch<PaginatedResponse<Spool>>(`/api/spools?status=ACTIVE&page=${currentPage}&pageSize=${pageSize}`),
+          apiFetch<PaginatedResponse<Spool>>(`/api/spools?status=EMPTY&page=1&pageSize=10`)
+        ]);
+        if (!cancelled) {
+          setActiveSpools(activeRes.data);
+          setTotalActive(activeRes.total);
+          setEmptySpools(emptyRes.data);
+          setTotalEmpty(emptyRes.total);
+        }
       } finally {
-        if (!cancelled) setLoadingEmpty(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
-    void loadEmpty();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    void loadData();
+    return () => { cancelled = true; };
+  }, [currentPage]);
 
   const activeGroups = useMemo(
     () => sortGroupedSpools(groupSpools(activeSpools), activeSortBy, activeSortOrder),
@@ -100,11 +107,6 @@ export default function SpoolsPage() {
       <PageHeader
         title="我的线轴"
         subtitle="线轴数按耗材聚合展示"
-        actions={
-          <Link href="/filaments" className="text-sm font-medium text-primary">
-            + 新增
-          </Link>
-        }
       />
 
       <div className="app-content">
@@ -122,23 +124,25 @@ export default function SpoolsPage() {
             <TabsContent value="active" className="mt-4">
               <MobileSpoolList
                 mode="active"
-                loading={loadingActive}
+                loading={loading}
                 groups={activeGroups}
                 empty={
-                  <>
-                    <span>暂无使用中的线轴，</span>
-                    <Link href="/filaments" className="text-primary underline">
-                      去添加
-                    </Link>
-                  </>
+                  <span className="text-sm text-muted-foreground/60">
+                    可通过"全局扫描"或从"耗材目录"添加线轴
+                  </span>
                 }
+              />
+              <Pagination
+                currentPage={currentPage}
+                totalPages={Math.ceil(totalActive / pageSize)}
+                onPageChange={handlePageChange}
               />
             </TabsContent>
 
             <TabsContent value="empty" className="mt-4">
               <MobileSpoolList
                 mode="empty"
-                loading={loadingEmpty}
+                loading={loading}
                 groups={emptyGroups}
                 empty={<span>暂无已归档线轴</span>}
               />
@@ -150,26 +154,28 @@ export default function SpoolsPage() {
           <DesktopSpoolTable
             title="使用中"
             mode="active"
-            loading={loadingActive}
+            loading={loading}
             groups={activeGroups}
             sortBy={activeSortBy}
             sortOrder={activeSortOrder}
             onToggleSort={toggleActiveSort}
             empty={
-              <>
-                <span>暂无使用中的线轴，</span>
-                <Link href="/filaments" className="text-primary underline">
-                  去添加
-                </Link>
-              </>
+              <span className="text-sm text-muted-foreground/60">
+                可通过"全局扫描"或从"耗材目录"添加线轴
+              </span>
             }
             onRowClick={(filamentId) => router.push(`/spools/details/${filamentId}`)}
+          />
+          <Pagination
+            currentPage={currentPage}
+            totalPages={Math.ceil(totalActive / pageSize)}
+            onPageChange={handlePageChange}
           />
 
           <DesktopSpoolTable
             title="已归档线轴"
             mode="empty"
-            loading={loadingEmpty}
+            loading={loading}
             groups={emptyGroups}
             sortBy={emptySortBy}
             sortOrder={emptySortOrder}
@@ -180,5 +186,20 @@ export default function SpoolsPage() {
         </div>
       </div>
     </PageShell>
+  );
+}
+
+export default function SpoolsPage() {
+  return (
+    <Suspense fallback={
+      <PageShell size="wide">
+        <PageHeader title="我的线轴" subtitle="加载中..." />
+        <div className="app-content">
+          <p className="text-center text-muted-foreground py-8">加载中...</p>
+        </div>
+      </PageShell>
+    }>
+      <SpoolsContent />
+    </Suspense>
   );
 }
