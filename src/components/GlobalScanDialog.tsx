@@ -117,8 +117,8 @@ export function GlobalScanDialog({ trigger }: GlobalScanDialogProps) {
     if (target.type === "location") {
       dispatch({ type: "SCAN_LOCATION_START", locationId: target.locationId });
       try {
-        const spools = await apiFetch<ActiveSpool[]>("/api/spools?status=ACTIVE");
-        dispatch({ type: "SPOOLS_LOADED", spools });
+        const response = await apiFetch<{ data: ActiveSpool[] }>("/api/spools?status=ACTIVE&pageSize=100");
+        dispatch({ type: "SPOOLS_LOADED", spools: response.data });
       } catch (err) {
         dispatch({ type: "SCAN_ERROR", errorMsg: err instanceof Error ? err.message : "加载线轴失败，请重试" });
       }

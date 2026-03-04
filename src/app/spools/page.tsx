@@ -34,6 +34,7 @@ function SpoolsContent() {
   const [totalActive, setTotalActive] = useState(0);
   const [totalEmpty, setTotalEmpty] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [activeSortBy, setActiveSortBy] = useState<SortField>("created_at");
   const [activeSortOrder, setActiveSortOrder] = useState<SortOrder>("desc");
@@ -54,6 +55,7 @@ function SpoolsContent() {
 
     async function loadData() {
       setLoading(true);
+      setError(null);
       try {
         const [activeRes, emptyRes] = await Promise.all([
           apiFetch<PaginatedResponse<Spool>>(`/api/spools?status=ACTIVE&page=${currentPage}&pageSize=${pageSize}`),
@@ -64,6 +66,10 @@ function SpoolsContent() {
           setTotalActive(activeRes.total);
           setEmptySpools(emptyRes.data);
           setTotalEmpty(emptyRes.total);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "加载失败，请重试");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -110,6 +116,11 @@ function SpoolsContent() {
       />
 
       <div className="app-content">
+        {error && (
+          <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+            {error}
+          </div>
+        )}
         <div className="md:hidden">
           <Tabs defaultValue="active">
             <TabsList className="w-full">
