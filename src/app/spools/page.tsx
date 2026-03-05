@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState, Suspense } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/layout/page-header";
@@ -32,7 +31,6 @@ function SpoolsContent() {
   const [activeSpools, setActiveSpools] = useState<Spool[]>([]);
   const [emptySpools, setEmptySpools] = useState<Spool[]>([]);
   const [totalActive, setTotalActive] = useState(0);
-  const [totalEmpty, setTotalEmpty] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,7 +63,6 @@ function SpoolsContent() {
           setActiveSpools(activeRes.data);
           setTotalActive(activeRes.total);
           setEmptySpools(emptyRes.data);
-          setTotalEmpty(emptyRes.total);
         }
       } catch (err) {
         if (!cancelled) {
@@ -139,7 +136,7 @@ function SpoolsContent() {
                 groups={activeGroups}
                 empty={
                   <span className="text-sm text-muted-foreground/60">
-                    可通过"全局扫描"或从"耗材目录"添加线轴
+                    可通过&quot;全局扫描&quot;或从&quot;耗材目录&quot;添加线轴
                   </span>
                 }
               />
@@ -172,7 +169,7 @@ function SpoolsContent() {
             onToggleSort={toggleActiveSort}
             empty={
               <span className="text-sm text-muted-foreground/60">
-                可通过"全局扫描"或从"耗材目录"添加线轴
+                可通过&quot;全局扫描&quot;或从&quot;耗材目录&quot;添加线轴
               </span>
             }
             onRowClick={(filamentId) => router.push(`/spools/details/${filamentId}`)}

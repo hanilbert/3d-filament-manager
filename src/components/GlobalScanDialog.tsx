@@ -291,7 +291,7 @@ export function GlobalScanDialog({ trigger }: GlobalScanDialogProps) {
           <AlertDialogDescription className="text-[15px] leading-relaxed text-muted-foreground/80">
             数据库尚未收录此 UPC (条码：{state.missingUpcGtin})。
             <br />
-            是否需要前往<span className="font-medium text-foreground">"耗材数据库"</span>登记新规格？
+            是否需要前往<span className="font-medium text-foreground">&quot;耗材数据库&quot;</span>登记新规格？
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="mt-4 gap-2">
