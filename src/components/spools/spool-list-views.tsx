@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ExternalLink, Pencil } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { ColorSwatch } from "@/components/ColorSwatch";
 import { SortHeader } from "@/components/SortHeader";
 import { formatDate } from "@/lib/utils";
@@ -318,15 +318,9 @@ export function DesktopSpoolTable({
                         href={`/spools/details/${group.filamentId}`}
                         className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border transition-colors hover:bg-muted"
                         title="查看详情"
+                        aria-label="查看详情"
                       >
                         <ExternalLink className="h-3.5 w-3.5" />
-                      </Link>
-                      <Link
-                        href={`/filaments/${group.filamentId}/edit`}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border transition-colors hover:bg-muted"
-                        title="编辑"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
                       </Link>
                     </div>
                   </td>

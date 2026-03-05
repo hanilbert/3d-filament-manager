@@ -1,3 +1,4 @@
+import { memo } from "react";
 import Link from "next/link";
 
 interface ColorCardProps {
@@ -11,7 +12,7 @@ interface ColorCardProps {
 
 const HEX_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
-export function ColorCard({ id, colorName, colorHex, brand, material, variant }: ColorCardProps) {
+export const ColorCard = memo(function ColorCard({ id, colorName, colorHex, brand, material, variant }: ColorCardProps) {
   const isValidHex = colorHex && HEX_RE.test(colorHex);
   const displayHex = isValidHex ? colorHex.toUpperCase() : null;
   const bgColor = isValidHex ? colorHex : undefined;
@@ -45,4 +46,4 @@ export function ColorCard({ id, colorName, colorHex, brand, material, variant }:
       </div>
     </Link>
   );
-}
+});

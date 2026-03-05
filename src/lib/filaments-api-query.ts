@@ -67,16 +67,15 @@ function getFlatListOrderBy(
 async function handleGroupByBrandList(): Promise<NextResponse> {
   const rows = await prisma.$queryRaw<Array<{ brand: string; logo_url: string | null }>>`
     WITH latest_logo AS (
-      SELECT brand, logo_url
-      FROM (
-        SELECT
-          f.brand,
-          f.logo_url,
-          ROW_NUMBER() OVER (PARTITION BY f.brand ORDER BY f.updated_at DESC) AS rn
-        FROM "Filament" f
-        WHERE f.logo_url IS NOT NULL
-      ) ranked
-      WHERE rn = 1
+      SELECT f1.brand, f1.logo_url
+      FROM "Filament" f1
+      INNER JOIN (
+        SELECT brand, MAX(updated_at) as max_updated_at
+        FROM "Filament"
+        WHERE logo_url IS NOT NULL
+        GROUP BY brand
+      ) f2 ON f1.brand = f2.brand AND f1.updated_at = f2.max_updated_at
+      WHERE f1.logo_url IS NOT NULL
     )
     SELECT
       f.brand AS brand,
@@ -110,16 +109,15 @@ async function handleGroupByBrand(): Promise<NextResponse> {
       GROUP BY s.filament_id
     ),
     latest_logo AS (
-      SELECT brand, logo_url
-      FROM (
-        SELECT
-          f.brand,
-          f.logo_url,
-          ROW_NUMBER() OVER (PARTITION BY f.brand ORDER BY f.updated_at DESC) AS rn
-        FROM "Filament" f
-        WHERE f.logo_url IS NOT NULL
-      ) ranked
-      WHERE rn = 1
+      SELECT f1.brand, f1.logo_url
+      FROM "Filament" f1
+      INNER JOIN (
+        SELECT brand, MAX(updated_at) as max_updated_at
+        FROM "Filament"
+        WHERE logo_url IS NOT NULL
+        GROUP BY brand
+      ) f2 ON f1.brand = f2.brand AND f1.updated_at = f2.max_updated_at
+      WHERE f1.logo_url IS NOT NULL
     )
     SELECT
       f.brand AS brand,

@@ -179,12 +179,12 @@ export function SpoolLabelPrinter({ filament: gf, qrUrl }: SpoolLabelPrinterProp
     <>
       {/* Control panel */}
       <div style={{ padding: "16px 0", maxWidth: "800px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px", flexWrap: "wrap" }}>
-          <div style={{ flex: 1, minWidth: "300px" }}>
+        <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "flex-start", gap: "24px", flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: "340px" }}>
             <h3 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "12px", color: "#333" }}>
               选择要显示的参数（最多 {MAX_SLOTS} 个）
             </h3>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 160px)", gap: "8px" }}>
               {slots.map((slotKey, i) => (
                 <Select key={i} value={slotKey} onValueChange={(v) => updateSlot(i, v)}>
                   <SelectTrigger style={{ width: "160px", fontSize: "13px" }}>
@@ -202,7 +202,7 @@ export function SpoolLabelPrinter({ filament: gf, qrUrl }: SpoolLabelPrinterProp
               ))}
             </div>
           </div>
-          <Button onClick={handleDownload} size="lg" style={{ marginTop: "4px" }}>
+          <Button onClick={handleDownload} size="lg" style={{ marginTop: "32px", flex: "0 0 auto" }}>
             <Download className="size-4" />
             下载标签图片
           </Button>

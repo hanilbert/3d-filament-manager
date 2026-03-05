@@ -61,6 +61,21 @@ function parseSpoolStatus(value: string | null): SpoolStatus | null | "invalid" 
 }
 
 /**
+ * 解析分页参数
+ * @param pageParam - page 参数值
+ * @param pageSizeParam - pageSize 参数值
+ * @returns { page: number, pageSize: number }
+ */
+function parsePaginationParams(
+  pageParam: string | null,
+  pageSizeParam: string | null
+): { page: number; pageSize: number } {
+  const page = Math.max(1, parseInt(pageParam || "1", 10) || 1);
+  const pageSize = Math.min(100, Math.max(1, parseInt(pageSizeParam || "20", 10) || 20));
+  return { page, pageSize };
+}
+
+/**
  * 根据排序字段构建 Prisma orderBy 对象
  * 处理关联字段（brand, material 等）和直接字段的不同查询语法
  * @param field - 排序字段
@@ -93,15 +108,17 @@ function getSpoolOrderBy(
 
 /**
  * GET /api/spools
- * 获取线轴列表
+ * 获取线轴列表（支持分页）
  *
  * 查询参数：
  * - status: 筛选状态（ACTIVE | EMPTY），可选
  * - sortBy: 排序字段，默认 created_at
  * - sortOrder: 排序方向（asc | desc），默认 desc
+ * - page: 页码，默认 1
+ * - pageSize: 每页数量，默认 20，最大 100
  *
  * 返回：
- * - 200: 线轴列表（包含关联的耗材和位置信息）
+ * - 200: 分页结果 { data: Spool[], total: number, page: number, pageSize: number }
  * - 400: 无效的 status 参数
  * - 401: 未认证
  */
@@ -116,27 +133,44 @@ export async function GET(request: NextRequest) {
   }
   const sortBy = parseSortField(searchParams.get("sortBy"));
   const sortOrder = parseSortOrder(searchParams.get("sortOrder"));
+  const { page, pageSize } = parsePaginationParams(
+    searchParams.get("page"),
+    searchParams.get("pageSize")
+  );
 
-  const spools = await prisma.spool.findMany({
-    where: status ? { status: status as "ACTIVE" | "EMPTY" } : {},
-    include: {
-      filament: {
-        select: {
-          id: true,
-          brand: true,
-          material: true,
-          variant: true,
-          color_name: true,
-          color_hex: true,
-          logo_url: true,
+  const where = status ? { status: status as "ACTIVE" | "EMPTY" } : {};
+  const skip = (page - 1) * pageSize;
+
+  const [spools, total] = await prisma.$transaction([
+    prisma.spool.findMany({
+      where,
+      include: {
+        filament: {
+          select: {
+            id: true,
+            brand: true,
+            material: true,
+            variant: true,
+            color_name: true,
+            color_hex: true,
+            logo_url: true,
+          },
         },
+        location: { select: { id: true, name: true } },
       },
-      location: { select: { id: true, name: true } },
-    },
-    orderBy: getSpoolOrderBy(sortBy, sortOrder),
-  });
+      orderBy: getSpoolOrderBy(sortBy, sortOrder),
+      skip,
+      take: pageSize,
+    }),
+    prisma.spool.count({ where }),
+  ]);
 
-  return NextResponse.json(spools);
+  return NextResponse.json({
+    data: spools,
+    total,
+    page,
+    pageSize,
+  });
 }
 
 /**
